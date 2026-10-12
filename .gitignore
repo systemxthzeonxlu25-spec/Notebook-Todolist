@@ -14,6 +14,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 .venv-local/
+.venv-local.old/
 venv/
 instance/
 uploads/

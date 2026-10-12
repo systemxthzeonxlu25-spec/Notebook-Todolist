@@ -36,6 +36,8 @@
 
 ## 本地运行
 
+Windows 可完整下载并解压项目后，双击 `start-windows.cmd`。入口会准备 Python 3.12 与独立依赖环境，使用 Waitress 启动并打开浏览器；数据默认保存在 `%LOCALAPPDATA%\Notebook-Todolist`。完整说明见 [LOCAL.md](LOCAL.md)。Windows 双击入口尚未在 Windows 实机验收，下列命令也可用于手动运行。
+
 需要 Python 3.12。前端资源已随仓库提供，无需 Node.js 构建。
 
 ```bash
@@ -154,7 +156,7 @@ service worker 只缓存公开的应用外壳资源，不缓存登录后的 HTML
 - 后端：Python 3.12、Flask、SQLite、OpenAI Python SDK、Pillow。
 - 前端：原生 HTML / CSS / JavaScript，Jinja 模板，无前端构建工具要求。
 - 浏览器组件：marked、DOMPurify、KaTeX、html2canvas，发行文件和许可证保存在 `static/vendor/`，运行时无需从 CDN 下载。
-- 部署与验证：Gunicorn、Caddy、systemd、pytest。
+- 部署与验证：Waitress（本机）、Gunicorn / Caddy / systemd（VPS）、pytest。
 
 ```text
 app.py                  应用工厂、页面和业务 API
@@ -170,6 +172,9 @@ static/*.css            页面与组件样式
 static/*.js             页面逻辑、状态、事件和 API 调用
 static/vendor/          第三方浏览器组件及许可证
 tests/                  自动化测试
+scripts/                本机依赖准备与独立数据启动器
+start-windows.cmd       Windows 双击启动入口
+LOCAL.md                本机安装、数据位置和故障处理
 deploy/                 Gunicorn、Caddy、systemd 和备份配置
 .env.example            不含真实密钥的配置示例
 DEPLOY.md               VPS 逐步部署、备份恢复和回滚清单
@@ -187,9 +192,11 @@ DEPLOY.md               VPS 逐步部署、备份恢复和回滚清单
 python -m pytest -q
 ```
 
-当前 147 项自动化测试通过，覆盖核心笔记流程、账号隔离、CSRF、登录限速、AI 模拟接口与输入边界、附件权限、复习冲刺和统计规则，以及生产代理、异常输入和 SQLite 备份恢复。AI 测试使用假密钥与模拟上游，不会消耗真实服务额度。也已进行真实浏览器交互检查；其中 AI 响应使用模拟数据，不能代替真实供应商验证。
+当前 154 项自动化测试通过，覆盖核心笔记流程、账号隔离、CSRF、登录限速、AI 模拟接口与输入边界、附件权限、复习冲刺和统计规则，以及生产代理、异常输入、SQLite 备份恢复和本机启动器。AI 测试使用假密钥与模拟上游，不会消耗真实服务额度。也已进行真实浏览器交互检查；其中 AI 响应使用模拟数据，不能代替真实供应商验证。
 
 本地已实际启动 Gunicorn 验证注册和保存流程，使用 Caddy 2.11.7 官方二进制校验反向代理配置，并检查 systemd 单元语法；尚未在真实 VPS 启动这些服务或申请证书。
+
+本机启动器已在 Linux 上完成全新依赖安装、中文与空格路径启动、离线复用依赖，以及重启后原浏览器会话和数据保留检查。真实 Waitress 服务上的桌面与 320px 手机浏览器验收通过，包含附件上传、两套分享长图、草稿恢复、统计和离线外壳；在线页面 JavaScript 错误为 0。已验证 Windows x64 依赖安装包可下载，但这不等于 Windows 实机启动验证。
 
 ## Roadmap
 
@@ -200,6 +207,7 @@ python -m pytest -q
 
 ## Known Issues
 
+- Windows 一键启动入口尚未在 Windows 实机验收；当前完成的是 Linux 环境实际运行及 Windows 依赖兼容性检查。
 - 尚未使用真实 API Key 验证供应商模型可用性、出题质量和板书识别效果；默认模型名仅为可修改示例，也不保证具备视觉能力。
 - VPS 部署文件已经准备，真实机器的资源、域名、证书、端口占用与现有代理兼容性尚未验证。
 - 暂无邮箱绑定和找回密码流程；`create-user` 只能创建新账号，不能恢复旧账号或其数据。
