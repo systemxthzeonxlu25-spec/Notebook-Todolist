@@ -43,13 +43,18 @@ def next_lesson(schedule, course_id, now):
 def extract_items(content, schedule, course_id, now):
     """只提取非代码块内容；稳定内容标识保留完成/复习状态。"""
     todos, cards, counts = [], [], {}
-    in_fence = False
+    fence_char, fence_length = None, 0
     due = next_lesson(schedule, course_id, now)
     for line in content.splitlines():
-        if re.match(r"^\s*(```|~~~)", line):
-            in_fence = not in_fence
+        fence = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if fence_char:
+            if fence and fence.group(1)[0] == fence_char and len(fence.group(1)) >= fence_length and not fence.group(2).strip():
+                fence_char, fence_length = None, 0
             continue
-        if in_fence:
+        if fence:
+            fence_char, fence_length = fence.group(1)[0], len(fence.group(1))
+            continue
+        if line.startswith(("    ", "\t")):
             continue
         task = re.match(r"^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$", line)
         if task:
