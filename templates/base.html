@@ -11,9 +11,12 @@
   <title>{% block title %}学生笔记{% endblock %} · 笔记课间</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/katex/katex.min.css') }}">
   {% block head %}{% endblock %}
   <script src="{{ url_for('static', filename='vendor/marked.js') }}" defer></script>
   <script src="{{ url_for('static', filename='vendor/purify.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='vendor/katex/katex.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='vendor/katex/auto-render.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   <script src="{{ url_for('static', filename='auth-session.js') }}" defer></script>
   <script src="{{ url_for('static', filename='pwa.js') }}" defer></script>
@@ -29,6 +32,7 @@
         <a href="/notes" {% if request.path.startswith('/notes') %}aria-current="page"{% endif %}>笔记</a>
         <a href="/quick" {% if request.path == '/quick' %}aria-current="page"{% endif %}>随手记</a>
         <a href="/schedule" {% if request.path == '/schedule' %}aria-current="page"{% endif %}>课表</a>
+        {% if current_user %}<a href="/settings" {% if request.path == '/settings' %}aria-current="page"{% endif %}>设置</a>{% endif %}
         {% block extra_navigation %}{% endblock %}
       </nav>
       <div class="action-row site-account">

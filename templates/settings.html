@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}AI 设置{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='ai-settings.js') }}" defer></script>
+<script src="{{ url_for('static', filename='settings.js') }}" defer></script>
+{% endblock %}
+{% block content %}
+<header class="page-heading"><div><h1>AI 设置</h1><p>连接你自己的 OpenAI 兼容服务，为笔记添加整理、任务识别、出题与照片识别。</p></div></header>
+<div class="grid-two">
+  <section class="panel" aria-labelledby="ai-settings-heading">
+    <h2 id="ai-settings-heading">连接设置</h2>
+    <form id="ai-settings-form" class="stack" autocomplete="off">
+      <label class="field"><span class="field__label">Base URL</span><input id="ai-base-url" name="base_url" type="url" required maxlength="500" placeholder="https://api.deepseek.com" spellcheck="false"><span class="field__hint">填写服务商提供的 HTTPS API 地址；部分服务需在地址后保留 /v1。</span></label>
+      <label class="field"><span class="field__label">API Key</span><input id="ai-api-key" name="api_key" type="password" required maxlength="4096" autocomplete="off" spellcheck="false" placeholder="填写你自己的 API Key"><span class="field__hint">只保存在当前浏览器的 localStorage，按登录账号区分。调用 AI 时通过请求头转发，服务器不保存。</span></label>
+      <label class="field"><span class="field__label">模型名</span><input id="ai-model" name="model" required maxlength="200" placeholder="deepseek-v4.1-flash" spellcheck="false"><span class="field__hint">示例：deepseek-v4.1-flash。实际模型名及图片识别能力，以服务商提供的信息为准。</span></label>
+      <p id="ai-settings-status" class="muted" role="status"></p>
+      <div class="action-row"><button class="button" type="submit">保存到此浏览器</button><button class="button button--danger" id="ai-settings-delete" type="button">删除 AI 设置</button></div>
+    </form>
+  </section>
+  <aside class="panel" aria-labelledby="ai-settings-info-heading">
+    <h2 id="ai-settings-info-heading">使用说明</h2>
+    <p>默认填入 DeepSeek 的示例地址和模型名。保存 API Key 后，笔记编辑页中的 AI 按钮将启用。</p>
+    <p>自定义服务域名需站点管理员先加入允许列表（AI_ALLOWED_HOSTS）。若地址被拒绝，请联系管理员开放对应域名。</p>
+    <p>点击 AI 功能时，对应的笔记正文、任务描述或压缩照片会发送给你配置的服务商。AI 结果会先显示预览，确认后再加入笔记、待办或复习卡。</p>
+    <p>照片识别需要支持图片输入的模型。普通文字模型无法处理照片，可以在这里切换到服务商提供的视觉模型。</p>
+    <p class="muted">更换浏览器或设备后需要重新配置。在共享设备上使用结束后，可删除此浏览器中的 AI 设置。</p>
+    <a class="button button--secondary" href="/notes">返回笔记</a>
+  </aside>
+</div>
+{% endblock %}

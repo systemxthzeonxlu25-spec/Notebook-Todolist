@@ -44,7 +44,13 @@
       target.textContent = content || '开始输入笔记，即可在这里预览。';
       return;
     }
-    const parsed = marked.parse(content || '开始输入笔记，即可在这里预览。', { breaks: true, gfm: true });
+    const formulas = [];
+    const prefix = `MATH${crypto.randomUUID().replaceAll('-', '')}X`;
+    const source = (content || '开始输入笔记，即可在这里预览。').replace(/\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|(?<!\\)\$[^\n$]+?(?<!\\)\$/g, value => {
+      formulas.push(value);
+      return `${prefix}${formulas.length - 1}END`;
+    });
+    const parsed = marked.parse(source, { breaks: true, gfm: true });
     target.innerHTML = DOMPurify.sanitize(parsed, { FORBID_TAGS: ['style', 'iframe'], FORBID_ATTR: ['style'] });
     target.querySelectorAll('a').forEach(link => {
       link.rel = 'noopener noreferrer';
@@ -54,6 +60,7 @@
     const textNodes = [];
     while (walker.nextNode()) textNodes.push(walker.currentNode);
     textNodes.forEach(node => {
+      node.textContent = node.textContent.replace(new RegExp(`${prefix}(\\d+)END`, 'g'), (_, index) => formulas[Number(index)]);
       if (node.parentElement.closest('code, pre') || !/==([^=\n]+)==/.test(node.textContent)) return;
       const fragment = document.createDocumentFragment();
       const parts = node.textContent.split(/==([^=\n]+)==/g);
@@ -63,6 +70,12 @@
       });
       node.replaceWith(fragment);
     });
+    if (window.renderMathInElement) {
+      renderMathInElement(target, {
+        delimiters: [{ left: '$$', right: '$$', display: true }, { left: '\\[', right: '\\]', display: true }, { left: '\\(', right: '\\)', display: false }, { left: '$', right: '$', display: false }],
+        throwOnError: false, trust: false, strict: 'ignore', maxExpand: 1000, maxSize: 20,
+      });
+    }
     document.dispatchEvent(new CustomEvent('markdown:rendered', { detail: { target } }));
   }
   function element(tag, className, text) {
