@@ -52,7 +52,7 @@ python app.py
 
 `requirements-dev.txt` 包含应用依赖和 pytest；只运行应用时也可以安装 `requirements.txt`。首次启动自动初始化 SQLite。数据库与原图默认位于被 Git 忽略的 `instance/` 目录，升级时需要保留这些文件。
 
-本地 `SECRET_KEY` 留空时会在每次启动时生成临时值，重启后需要重新登录。生产部署必须提供稳定的随机密钥；第七阶段的 `DEPLOY.md` 将提供生成命令。不要覆盖已有 `.env`，也不要把真实配置、数据库、上传文件或 API Key 提交到 Git。
+本地 `SECRET_KEY` 留空时会在每次启动时生成临时值，重启后需要重新登录。生产部署必须提供至少 32 个字符的稳定随机密钥；具体生成方式见 [DEPLOY.md](DEPLOY.md)。不要覆盖已有 `.env`，也不要把真实配置、数据库、上传文件或 API Key 提交到 Git。
 
 ### 常用配置
 
@@ -61,13 +61,14 @@ python app.py
 | 变量 | 默认值 | 用途 |
 | --- | --- | --- |
 | `APP_ENV` | `development` | 生产设为 `production`，此时必须配置 `SECRET_KEY` |
-| `SECRET_KEY` | 留空 | Flask 会话签名密钥；生产使用随机长密钥并保持稳定 |
+| `SECRET_KEY` | 留空 | Flask 会话签名密钥；生产使用至少 32 个字符的随机密钥并保持稳定 |
 | `DATABASE_PATH` | `instance/notebook.sqlite3` | SQLite 路径；相对路径以项目根目录为基准，也支持绝对路径 |
 | `UPLOAD_FOLDER` | `instance/uploads` | 私有原图目录；生产放在代码目录之外 |
 | `TZ` | `Asia/Shanghai` | 课表、自然语言日期、考试日和学习统计使用的时区 |
 | `HOST` | `127.0.0.1` | `python app.py` 的监听地址；生产 Gunicorn 使用独立配置 |
 | `PORT` | `5000` | 本地运行端口；生产内部端口为 `18765` |
 | `SESSION_COOKIE_SECURE` | `false` | 本地 HTTP 用 `false`，生产 HTTPS 用 `true` |
+| `TRUST_PROXY` | `false` | 部署在本机 Caddy 后设为 `true`；仅对原始回环连接信任一层代理，取得真实客户端 IP 与协议 |
 | `REGISTER_ENABLED` | `true` | 默认允许任何人注册；设为 `false` 可关闭新注册，不影响已有账号登录 |
 | `MAX_CONTENT_LENGTH` | `16777216` | HTTP 请求体上限，默认 16 MiB；具体文本、图片接口另有更小限制 |
 | `AI_ALLOWED_HOSTS` | `api.deepseek.com,api.openai.com` | 管理员允许的 AI 服务域名，逗号分隔；不填写密钥或 URL 路径 |
@@ -142,7 +143,7 @@ service worker 只缓存公开的应用外壳资源，不缓存登录后的 HTML
 
 ## VPS 部署
 
-第七阶段将提交 `DEPLOY.md` 和 `deploy/`，提供配置文件和待执行清单；当前尚未在用户 VPS 上执行部署。
+完整步骤见 [DEPLOY.md](DEPLOY.md)，部署文件位于 [deploy/](deploy/)。当前提供的是配置文件和待执行清单，尚未在用户 VPS 上执行部署。
 
 面向 1–2 核、小内存机器，使用单 Gunicorn worker、两个线程，后台仅监听 `127.0.0.1:18765`；通过独立 Caddy 服务提供 HTTPS，systemd 负责开机启动和异常重启。SQLite 每日使用在线备份 API 创建一致快照，默认保留 14 天；原图与环境文件需要另外备份。
 
@@ -158,6 +159,7 @@ service worker 只缓存公开的应用外壳资源，不缓存登录后的 HTML
 ```text
 app.py                  应用工厂、页面和业务 API
 auth.py                 注册登录、会话与访问控制
+proxy.py                本机反向代理信任边界
 db.py                   业务数据库访问、数据隔离与事务
 domain.py               课表、笔记提取、复习和统计规则
 ai.py                   无持久化的 AI 请求转发与输入输出校验
@@ -168,9 +170,9 @@ static/*.css            页面与组件样式
 static/*.js             页面逻辑、状态、事件和 API 调用
 static/vendor/          第三方浏览器组件及许可证
 tests/                  自动化测试
-deploy/                 第七阶段：Gunicorn、Caddy、systemd 和备份配置
+deploy/                 Gunicorn、Caddy、systemd 和备份配置
 .env.example            不含真实密钥的配置示例
-DEPLOY.md               第七阶段：VPS 逐步部署、备份恢复和回滚清单
+DEPLOY.md               VPS 逐步部署、备份恢复和回滚清单
 ```
 
 业务数据库操作集中在 `db.py`，路由和业务规则不直接写 SQL；部署备份脚本独立使用 SQLite 在线备份 API。
@@ -185,7 +187,9 @@ DEPLOY.md               第七阶段：VPS 逐步部署、备份恢复和回滚�
 python -m pytest -q
 ```
 
-自动化测试覆盖核心笔记流程、账号隔离、CSRF、登录限速、AI 模拟接口与输入边界、附件权限、复习冲刺和统计规则。AI 测试使用假密钥与模拟上游，不会消耗真实服务额度。也已进行真实浏览器交互检查；其中 AI 响应使用模拟数据，不能代替真实供应商验证。
+当前 147 项自动化测试通过，覆盖核心笔记流程、账号隔离、CSRF、登录限速、AI 模拟接口与输入边界、附件权限、复习冲刺和统计规则，以及生产代理、异常输入和 SQLite 备份恢复。AI 测试使用假密钥与模拟上游，不会消耗真实服务额度。也已进行真实浏览器交互检查；其中 AI 响应使用模拟数据，不能代替真实供应商验证。
+
+本地已实际启动 Gunicorn 验证注册和保存流程，使用 Caddy 2.11.7 官方二进制校验反向代理配置，并检查 systemd 单元语法；尚未在真实 VPS 启动这些服务或申请证书。
 
 ## Roadmap
 
@@ -197,7 +201,7 @@ python -m pytest -q
 ## Known Issues
 
 - 尚未使用真实 API Key 验证供应商模型可用性、出题质量和板书识别效果；默认模型名仅为可修改示例，也不保证具备视觉能力。
-- VPS 部署文件将在第七阶段提交，真实机器的资源、域名、证书、端口占用与现有代理兼容性尚未验证。
+- VPS 部署文件已经准备，真实机器的资源、域名、证书、端口占用与现有代理兼容性尚未验证。
 - 暂无邮箱绑定和找回密码流程；`create-user` 只能创建新账号，不能恢复旧账号或其数据。
 - 开发早期无登录版本的 `local` 数据不会自动归属新注册用户，避免错误认领；迁移需另行确认归属。
 - 本地草稿不跨设备同步；清理浏览器存储会清除草稿和本机 AI 配置。完整离线编辑与同步仍在 Roadmap。
