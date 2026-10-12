@@ -13,7 +13,7 @@ import db
 import auth
 import uploads
 import ai
-from domain import current_course, extract_items, next_lesson, parse_due, utc_iso
+from domain import current_course, exam_countdowns, extract_items, learning_heatmap, next_lesson, parse_due, utc_iso
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -182,6 +182,20 @@ def create_app(test_config=None):
     def settings_page():
         return render_template("settings.html")
 
+    @app.get("/statistics")
+    def statistics_page():
+        return render_template("statistics.html")
+
+    @app.get("/api/statistics")
+    def statistics():
+        current = now().astimezone(ZoneInfo(app.config["TZ"]))
+        since = datetime.combine(current.date() - timedelta(days=83), time.min, current.tzinfo)
+        until = datetime.combine(current.date() + timedelta(days=1), time.min, current.tzinfo)
+        result = db.learning_statistics(*database(), since=since, until=until)
+        result["heatmap"] = learning_heatmap(result.pop("events"), current, days=84)
+        result["timezone"] = app.config["TZ"]
+        return data(result)
+
     @app.route("/api/courses", methods=["GET", "POST"])
     def courses():
         if request.method == "GET":
@@ -196,10 +210,16 @@ def create_app(test_config=None):
         if request.method == "DELETE":
             result = db.delete_course(*database(), course_id)
         else:
-            name = text_field(payload(), "name", limit=80)
-            if not name:
-                raise ValueError("请输入课程名称")
-            result = db.update_course(*database(), course_id, name=name)
+            body = payload()
+            if "exam_date" in body:
+                if "name" in body:
+                    raise ValueError("请分别保存课程名称和考试日期")
+                result = db.set_course_exam(*database(), course_id, body["exam_date"], now())
+            else:
+                name = text_field(body, "name", limit=80)
+                if not name:
+                    raise ValueError("请输入课程名称")
+                result = db.update_course(*database(), course_id, name=name)
         return data(result) if result else (jsonify(error="课程不存在"), 404)
 
     @app.route("/api/schedule", methods=["GET", "POST"])
@@ -252,7 +272,7 @@ def create_app(test_config=None):
         todos, cards = extract_items(content, schedule_rows, course_id, now())
         if note_id:
             return data(db.update_note(*database(), note_id, title=title, content=content,
-                                       course_id=course_id, todos=todos, cards=cards))
+                                       course_id=course_id, todos=todos, cards=cards, now=now()))
         return data(db.create_note(*database(), title, content, course_id=course_id,
                                    todos=todos, cards=cards), 201)
 
@@ -329,7 +349,7 @@ def create_app(test_config=None):
         remembered = payload().get("remembered")
         if not isinstance(remembered, bool):
             raise ValueError("请选择记住了或没记住")
-        result = db.review_card(*database(), card_id, remembered, reviewed_at=utc_iso(now()))
+        result = db.review_card(*database(), card_id, remembered, reviewed_at=utc_iso(now()), tz=ZoneInfo(app.config["TZ"]))
         return data(result) if result else (jsonify(error="复习卡不存在"), 404)
 
     @app.get("/api/today")
@@ -338,7 +358,8 @@ def create_app(test_config=None):
         cutoff = utc_iso(datetime.combine(current.date(), time.max, current.tzinfo))
         return data({"date": current.date().isoformat(), "tz": app.config["TZ"],
                      "todos": [item for item in db.list_todos(*database(), due_before=cutoff) if not item["completed"]],
-                     "cards": db.list_cards(*database(), due_before=cutoff), "exams": []})
+                     "cards": db.list_cards(*database(), due_before=cutoff),
+                     "exams": exam_countdowns(db.list_courses(*database()), current)})
 
     return app
 

@@ -14,6 +14,8 @@ import re
 import sqlite3
 import uuid
 
+from domain import sprint_due
+
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS courses (
@@ -49,6 +51,7 @@ CREATE TABLE IF NOT EXISTS todos (
     title TEXT NOT NULL,
     due_at TEXT,
     completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)),
+    completed_at TEXT,
     created_at TEXT NOT NULL,
     UNIQUE(owner_id, note_id, source_key)
 );
@@ -80,6 +83,15 @@ CREATE INDEX IF NOT EXISTS idx_notes_owner ON notes(owner_id, course_id, updated
 CREATE INDEX IF NOT EXISTS idx_todos_owner_due ON todos(owner_id, due_at);
 CREATE INDEX IF NOT EXISTS idx_cards_owner_due ON cards(owner_id, due_at);
 CREATE INDEX IF NOT EXISTS idx_review_logs_owner ON review_logs(owner_id, reviewed_at);
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('note_created','card_reviewed','todo_completed')),
+    source_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(owner_id, kind, source_id)
+);
+CREATE INDEX IF NOT EXISTS idx_activity_owner_date ON activity_logs(owner_id, created_at);
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL,
@@ -182,6 +194,15 @@ def init_db(db_path):
     with _connection(db_path) as conn:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(SCHEMA)
+        # Additive, idempotent upgrade: preserve every existing row and owner.
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(todos)")}
+        if "completed_at" not in columns:
+            conn.execute("ALTER TABLE todos ADD COLUMN completed_at TEXT")
+        # Only backfill timestamps that actually exist; old completed tasks have
+        # no recorded completion date and must not fabricate today's activity.
+        conn.execute("INSERT OR IGNORE INTO activity_logs(owner_id,kind,source_id,created_at) SELECT owner_id,'note_created',id,created_at FROM notes")
+        conn.execute("INSERT OR IGNORE INTO activity_logs(owner_id,kind,source_id,created_at) SELECT owner_id,'card_reviewed',id,reviewed_at FROM review_logs")
+        conn.execute("INSERT OR IGNORE INTO activity_logs(owner_id,kind,source_id,created_at) SELECT owner_id,'todo_completed',id,completed_at FROM todos WHERE completed_at IS NOT NULL")
 
 
 def _get(conn, table, owner_id, item_id):
@@ -311,26 +332,31 @@ def create_note(db_path, owner_id, title, content, course_id=None, *, todos=None
         now = _now()
         note = _insert(conn, "notes", dict(owner_id=_owner(owner_id), title=_text(title, "笔记标题", max_length=500), content=_text(content, "笔记内容", empty=True), course_id=course_id, created_at=now, updated_at=now))
         _sync_note_items(conn, owner_id, note, todos, cards)
+        _record_activity(conn, owner_id, "note_created", note["id"], now)
         return note
 
 
-def update_note(db_path, owner_id, note_id, *, todos=None, cards=None, **fields):
+def update_note(db_path, owner_id, note_id, *, todos=None, cards=None, now=None, **fields):
     _check_fields(fields, ("title", "content", "course_id"))
     if "title" in fields:
         fields["title"] = _text(fields["title"], "笔记标题", max_length=500)
     if "content" in fields:
         fields["content"] = _text(fields["content"], "笔记内容", empty=True)
     with _connection(db_path) as conn:
-        if not _get(conn, "notes", owner_id, note_id):
+        existing = _get(conn, "notes", owner_id, note_id)
+        if not existing:
             return None
         _require_reference(conn, "courses", owner_id, fields.get("course_id"))
-        fields["updated_at"] = _now()
+        fields["updated_at"] = _timestamp(now, nullable=False)
         note = _update(conn, "notes", owner_id, note_id, fields)
         if "course_id" in fields:
             # Manual and extracted items follow their source note's course.
             for table in ("todos", "cards"):
                 conn.execute(f"UPDATE {table} SET course_id=? WHERE owner_id=? AND note_id=?", (fields["course_id"], owner_id, note_id))
         _sync_note_items(conn, owner_id, note, todos, cards)
+        if "course_id" in fields and fields["course_id"] != existing["course_id"]:
+            _sync_sprint(conn, owner_id, fields["course_id"],
+                         now or datetime.fromisoformat(fields["updated_at"]), note_id=note_id)
         return note
 
 
@@ -385,8 +411,15 @@ def update_todo(db_path, owner_id, todo_id, **fields):
     if "completed" in fields:
         fields["completed"] = _boolean(fields["completed"])
     with _connection(db_path) as conn:
+        existing = _get(conn, "todos", owner_id, todo_id)
+        if existing is None:
+            return None
         _require_reference(conn, "courses", owner_id, fields.get("course_id"))
         _require_reference(conn, "notes", owner_id, fields.get("note_id"))
+        if "completed" in fields and bool(fields["completed"]) != existing["completed"]:
+            fields["completed_at"] = _now() if fields["completed"] else None
+            if fields["completed"]:
+                _record_activity(conn, owner_id, "todo_completed", todo_id, fields["completed_at"])
         return _update(conn, "todos", owner_id, todo_id, fields)
 
 
@@ -436,7 +469,7 @@ def delete_card(db_path, owner_id, card_id):
     return _delete(db_path, "cards", owner_id, card_id)
 
 
-def review_card(db_path, owner_id, card_id, success, *, reviewed_at=None, intervals=(1, 3, 7, 15)):
+def review_card(db_path, owner_id, card_id, success, *, reviewed_at=None, intervals=(1, 3, 7, 15), tz=None):
     success = _boolean(success)
     if not intervals or any(isinstance(n, bool) or not isinstance(n, (int, float)) or n <= 0 for n in intervals):
         raise ValueError("复习间隔必须是正数")
@@ -448,8 +481,13 @@ def review_card(db_path, owner_id, card_id, success, *, reviewed_at=None, interv
         interval = intervals[min(card["step"], len(intervals) - 1)] if success else intervals[0]
         next_step = min(card["step"] + 1, len(intervals)) if success else 0
         due_at = _timestamp(datetime.fromisoformat(reviewed_at) + timedelta(days=interval), nullable=False)
+        course = _get(conn, "courses", owner_id, card["course_id"]) if card["course_id"] is not None else None
+        if course and course["exam_date"]:
+            local_now = datetime.fromisoformat(reviewed_at).astimezone(tz or timezone.utc)
+            due_at = sprint_due(due_at, course["exam_date"], local_now)
         updated = _update(conn, "cards", owner_id, card_id, dict(step=next_step, due_at=due_at))
-        _insert(conn, "review_logs", dict(owner_id=_owner(owner_id), card_id=card_id, course_id=card["course_id"], success=success, reviewed_at=reviewed_at))
+        log = _insert(conn, "review_logs", dict(owner_id=_owner(owner_id), card_id=card_id, course_id=card["course_id"], success=success, reviewed_at=reviewed_at))
+        _record_activity(conn, owner_id, "card_reviewed", log["id"], reviewed_at)
         return updated
 
 
@@ -485,7 +523,11 @@ def _sync_note_items(conn, owner_id, note, todos, cards):
                     fields["completed"] = _boolean(item.get("completed", False))
                 else:
                     fields["step"] = 0
-                _insert(conn, table, fields)
+                if table == "todos":
+                    fields["completed_at"] = fields["created_at"] if fields["completed"] else None
+                created = _insert(conn, table, fields)
+                if table == "todos" and fields["completed"]:
+                    _record_activity(conn, owner_id, "todo_completed", created["id"], fields["completed_at"])
         for source_key in existing.keys() - seen:
             conn.execute(f"DELETE FROM {table} WHERE owner_id=? AND id=?", (owner_id, existing[source_key]["id"]))
 
@@ -668,3 +710,87 @@ def create_manual_cards(db_path, owner_id, items, note_id=None, course_id=None):
                 kind="qa", due_at=_timestamp(item.get("due_at"), nullable=False), step=0, created_at=_now(),
             )))
         return result
+
+
+def _record_activity(conn, owner_id, kind, source_id, created_at):
+    """Keep history after deleting content, and count a task's completion once."""
+    conn.execute(
+        "INSERT OR IGNORE INTO activity_logs(owner_id,kind,source_id,created_at) VALUES (?,?,?,?)",
+        (_owner(owner_id), kind, source_id, _timestamp(created_at, nullable=False)),
+    )
+
+
+def _sync_sprint(conn, owner_id, course_id, now, *, note_id=None):
+    """Advance scoped cards inside their parent's write transaction."""
+    course = _get(conn, "courses", owner_id, course_id) if course_id is not None else None
+    if not course or not course["exam_date"]:
+        return
+    conditions, params = ["owner_id=?", "course_id=?"], [_owner(owner_id), course_id]
+    if note_id is not None:
+        conditions.append("note_id=?")
+        params.append(note_id)
+    rows = conn.execute("SELECT id,due_at FROM cards WHERE " + " AND ".join(conditions), params).fetchall()
+    for row in rows:
+        due_at = sprint_due(row["due_at"], course["exam_date"], now, first_round=True)
+        conn.execute("UPDATE cards SET due_at=? WHERE owner_id=? AND id=?", (due_at, owner_id, row["id"]))
+
+
+def set_course_exam(db_path, owner_id, course_id, exam_date, now):
+    """Save the exam and pull all existing cards forward in one transaction."""
+    exam_date = _exam_date(exam_date)
+    with _connection(db_path) as conn:
+        course = _update(conn, "courses", owner_id, course_id, {"exam_date": exam_date})
+        if course is None:
+            return None
+        _sync_sprint(conn, owner_id, course_id, now)
+        return course
+
+
+def learning_statistics(db_path, owner_id, *, since=None, until=None):
+    """Return all-time course rates plus a bounded range of activity events.
+
+    Accuracy is successes / recorded answers, not percent of cards mastered.
+    Todo rate is the currently completed fraction of currently existing todos.
+    Historical review statistics follow review_logs' existing cascade behavior;
+    the heatmap log itself persists after deleting source content.
+    """
+    owner_id = _owner(owner_id)
+    with _connection(db_path) as conn:
+        reviews = {row["course_id"]: dict(row) for row in conn.execute(
+            "SELECT course_id,COUNT(*) AS attempts,SUM(success) AS correct FROM review_logs WHERE owner_id=? GROUP BY course_id",
+            (owner_id,),
+        )}
+        todos = {row["course_id"]: dict(row) for row in conn.execute(
+            "SELECT course_id,COUNT(*) AS total,SUM(completed) AS completed FROM todos WHERE owner_id=? GROUP BY course_id",
+            (owner_id,),
+        )}
+        courses = [dict(row) for row in conn.execute("SELECT id,name FROM courses WHERE owner_id=? ORDER BY id", (owner_id,))]
+        if None in reviews or None in todos:
+            courses.append({"id": None, "name": "未归类"})
+        result = []
+        for course in courses:
+            review = reviews.get(course["id"], {})
+            todo = todos.get(course["id"], {})
+            attempts, correct = review.get("attempts", 0), review.get("correct", 0)
+            total, completed = todo.get("total", 0), todo.get("completed", 0)
+            result.append({"course_id": course["id"], "course_name": course["name"],
+                           "review_attempts": attempts, "review_correct": correct,
+                           "review_accuracy": round(correct / attempts, 4) if attempts else None,
+                           "todo_total": total, "todo_completed": completed,
+                           "todo_completion_rate": round(completed / total, 4) if total else None})
+        params = [owner_id]
+        conditions = ["owner_id=?"]
+        if since is not None:
+            conditions.append("created_at>=?")
+            params.append(_timestamp(since, nullable=False))
+        if until is not None:
+            conditions.append("created_at<?")
+            params.append(_timestamp(until, nullable=False))
+        events = [dict(row) for row in conn.execute(
+            "SELECT kind,created_at FROM activity_logs WHERE " + " AND ".join(conditions) + " ORDER BY created_at,id", params,
+        )]
+        total = sum(item["todo_total"] for item in result)
+        completed = sum(item["todo_completed"] for item in result)
+        return {"courses": result, "events": events,
+                "todo_total": total, "todo_completed": completed,
+                "todo_completion_rate": round(completed / total, 4) if total else None}
