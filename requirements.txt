@@ -4,4 +4,6 @@ openai==2.54.0
 httpx==0.28.1
 httpcore==1.0.9
 Pillow==12.3.0
-gunicorn==26.2.0
+gunicorn==26.2.0; sys_platform != "win32"
+waitress==3.0.2
+tzdata==2026.5

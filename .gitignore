@@ -1,6 +1,8 @@
 .env
 .env.*
 !.env.example
+# 本机启动器的会话签名文件，即使自定义数据目录位于仓库中也不能提交。
+secret_key
 *.db
 *.db-*
 *.sqlite
@@ -11,6 +13,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+.venv-local/
 venv/
 instance/
 uploads/
