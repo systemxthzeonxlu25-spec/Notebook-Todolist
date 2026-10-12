@@ -230,3 +230,64 @@ def test_browser_is_opened_only_after_successful_health_check(monkeypatch):
     events.clear()
     local_app.announce_when_ready("http://127.0.0.1:18765/", False, threading.Event())
     assert events == ["healthy"]
+
+
+def test_real_attachment_session_and_backup_restore_survive_restart(tmp_path):
+    """A complete local backup restores the account, note, original image and session."""
+    from contextlib import closing
+    from io import BytesIO
+    import shutil
+    import sqlite3
+    from PIL import Image
+
+    pytest.importorskip("waitress")
+    directory = tmp_path / "original-data"
+    restored = tmp_path / "restored-data"
+    opener = build_opener(ProxyHandler({}), HTTPCookieProcessor(CookieJar()))
+    image = BytesIO()
+    Image.new("RGB", (12, 8), (40, 100, 180)).save(image, format="PNG")
+    original = image.getvalue()
+    with live_process(directory, available_port()) as (_, base):
+        result, _ = request_json(opener, base, "/api/session")
+        result, _ = request_json(opener, base, "/api/auth/register",
+                                 {"username": "backup-local-user", "password": "local-backup-test-password"},
+                                 result["data"]["csrf_token"])
+        token = result["data"]["csrf_token"]
+        account = result["data"]["user"]
+        result, _ = request_json(opener, base, "/api/notes",
+                                 {"title": "Windows 备份恢复", "content": "==原图与会话也要保留=="}, token)
+        note_id = result["data"]["id"]
+        boundary = "notebook-real-local-image-boundary"
+        multipart = (
+            f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="original.png"\r\n'
+            'Content-Type: image/png\r\n\r\n'
+        ).encode() + original + f"\r\n--{boundary}--\r\n".encode()
+        request = Request(base + f"/api/notes/{note_id}/attachments", data=multipart,
+                          headers={"Content-Type": f"multipart/form-data; boundary={boundary}",
+                                   "X-CSRF-Token": token})
+        with opener.open(request, timeout=3) as response:
+            attachment = json.loads(response.read())["data"]
+        assert attachment["size"] == len(original)
+
+    # The local app is stopped before copying attachments and its session key.
+    # A new directory is used; restoring never replaces the original data.
+    restored.mkdir()
+    with closing(sqlite3.connect((directory / "notebook.sqlite3").as_uri() + "?mode=ro", uri=True)) as source:
+        with closing(sqlite3.connect(restored / "notebook.sqlite3")) as target:
+            source.backup(target)
+            assert target.execute("PRAGMA integrity_check").fetchone() == ("ok",)
+    shutil.copy2(directory / "secret_key", restored / "secret_key")
+    shutil.copytree(directory / "uploads", restored / "uploads")
+
+    for data in (directory, restored):
+        with live_process(data, available_port()) as (_, base):
+            result, _ = request_json(opener, base, "/api/session")
+            assert result["data"]["user"] == account
+            result, _ = request_json(opener, base, f"/api/notes/{note_id}")
+            assert result["data"]["title"] == "Windows 备份恢复"
+            result, _ = request_json(opener, base, f"/api/notes/{note_id}/attachments")
+            assert result["data"] == [attachment]
+            with opener.open(base + attachment["url"], timeout=3) as response:
+                assert response.read() == original
+                assert response.headers["Cache-Control"] == "private, no-store"
+    assert (directory / "secret_key").read_bytes() == (restored / "secret_key").read_bytes()
