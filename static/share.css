@@ -1,0 +1,32 @@
+.share-panel { margin-top: var(--space-5); }
+.share-preview { max-height: var(--share-preview-height); max-width: 100%; overflow: auto; border: var(--border-width) solid var(--color-border); border-radius: var(--radius-sm); }
+.share-preview--capture { max-height: none; overflow: visible; }
+.share-paper { width: var(--share-width); padding: var(--share-padding); background: var(--color-surface); color: var(--color-text); font-size: var(--share-body-size); overflow-wrap: anywhere; }
+.share-paper--paper {
+  --color-surface: var(--share-paper-bg);
+  --color-text: var(--share-paper-text);
+  --color-muted: var(--share-paper-muted);
+  --color-border: var(--share-paper-border);
+  --color-surface-alt: var(--share-paper-alt);
+  --color-primary: var(--share-paper-accent);
+  --color-highlight: var(--share-paper-mark);
+  --color-highlight-text: var(--share-paper-mark-text);
+}
+.share-paper--night {
+  --color-surface: var(--share-night-bg);
+  --color-text: var(--share-night-text);
+  --color-muted: var(--share-night-muted);
+  --color-border: var(--share-night-border);
+  --color-surface-alt: var(--share-night-alt);
+  --color-primary: var(--share-night-accent);
+  --color-highlight: var(--share-night-mark);
+  --color-highlight-text: var(--share-night-mark-text);
+}
+.share-paper__header { border-bottom: var(--border-width) solid var(--color-border); padding-bottom: var(--space-5); margin-bottom: var(--space-5); }
+.share-paper__brand, .share-paper__course { font-size: var(--font-sm); color: var(--color-muted); }
+.share-paper__title { font-size: var(--share-title-size); margin-bottom: var(--space-3); line-height: 1.35; }
+.share-paper__course { margin-bottom: var(--space-0); }
+.share-paper__body { line-height: 1.85; }
+.share-paper__body pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.share-paper__body img { display: block; margin: var(--space-3) auto; }
+.share-paper__footer { border-top: var(--border-width) solid var(--color-border); margin-top: var(--space-6); padding-top: var(--space-4); color: var(--color-muted); font-size: var(--font-sm); }

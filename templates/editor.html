@@ -1,8 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}编辑笔记{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='share.css') }}">{% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='editor.js') }}" defer></script>
 <script src="{{ url_for('static', filename='drafts.js') }}" defer></script>
+<script src="{{ url_for('static', filename='vendor/html2canvas.min.js') }}" defer></script>
+<script src="{{ url_for('static', filename='share.js') }}" defer></script>
 {% endblock %}
 {% block content %}
 <header class="page-heading">
@@ -27,9 +30,28 @@
   <div class="action-row" id="editor-actions">
     <button class="button" id="note-save" type="submit">保存笔记</button>
     <button class="button button--danger" id="note-delete" type="button" hidden>删除笔记</button>
+    <button class="button button--secondary" id="share-open" type="button" aria-expanded="false" aria-controls="share-panel">生成分享图</button>
     <span class="muted" id="note-save-status" role="status">尚未保存</span>
   </div>
   <p class="field__hint" id="draft-status" role="status">编辑内容会自动暂存于当前浏览器。</p>
 </form>
-<div id="editor-extensions"></div>
+<div id="editor-extensions">
+  <section class="panel share-panel" id="share-panel" aria-labelledby="share-heading" hidden>
+    <div class="panel__heading"><h2 id="share-heading">把笔记分享成长图</h2><button class="button button--quiet button--small" id="share-close" type="button">收起</button></div>
+    <div class="form-row">
+      <label class="field"><span class="field__label">排版模板</span><select id="share-template"><option value="paper">简洁纸张</option><option value="night">深色夜读</option></select></label>
+      <button class="button" id="share-download" type="button">生成并下载 PNG</button>
+      <a class="button button--secondary" id="share-download-link" hidden>再次下载</a>
+    </div>
+    <p class="field__hint">使用当前编辑器内容，无需先保存。超长内容请拆分为多篇笔记；外部图片可能因网站限制无法导出。</p>
+    <p class="muted" id="share-status" role="status"></p>
+    <div class="share-preview" id="share-preview" tabindex="0" aria-label="分享图预览，可横向和纵向滚动">
+      <article class="share-paper share-paper--paper" id="share-paper">
+        <header class="share-paper__header"><p class="share-paper__brand">笔记课间 · 学习手记</p><h2 class="share-paper__title" id="share-title"></h2><p class="share-paper__course" id="share-course"></p></header>
+        <div class="share-paper__body markdown-body" id="share-content"></div>
+        <footer class="share-paper__footer">把知识写下来，让每一次复习都有迹可循。</footer>
+      </article>
+    </div>
+  </section>
+</div>
 {% endblock %}

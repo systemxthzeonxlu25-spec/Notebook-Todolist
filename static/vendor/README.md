@@ -4,5 +4,6 @@
 
 - marked 15.0.12：`marked.js`，许可证 `marked.LICENSE`
 - DOMPurify 3.4.16：`purify.min.js`，许可证 `dompurify.LICENSE`
+- html2canvas 1.4.1：`html2canvas.min.js`，许可证 `html2canvas.LICENSE`
 
 第三方发行文件保持原样，不作为应用换肤入口。
