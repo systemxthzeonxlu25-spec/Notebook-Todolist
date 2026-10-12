@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}一周课表{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='schedule.js') }}" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading">
+  <div><h1>一周课表</h1><p>设置上课时间，新笔记会自动归入当前课程，待办默认在下次上课前到期。</p></div>
+</header>
+<div class="grid-two">
+  <section class="panel" aria-labelledby="courses-heading">
+    <h2 id="courses-heading">我的课程</h2>
+    <form id="course-form" class="form-row">
+      <label class="field field--grow"><span class="field__label">课程名称</span><input name="name" required maxlength="100" placeholder="例如：高等数学"></label>
+      <button class="button" type="submit">添加课程</button>
+    </form>
+    <ul class="item-list" id="course-list" aria-live="polite"></ul>
+  </section>
+  <section class="panel" aria-labelledby="schedule-form-heading">
+    <h2 id="schedule-form-heading">添加上课时段</h2>
+    <form id="schedule-form" class="stack">
+      <label class="field"><span class="field__label">课程</span><select name="course_id" id="schedule-course" required><option value="">请先添加课程</option></select></label>
+      <label class="field"><span class="field__label">星期</span><select name="weekday"><option value="0">星期一</option><option value="1">星期二</option><option value="2">星期三</option><option value="3">星期四</option><option value="4">星期五</option><option value="5">星期六</option><option value="6">星期日</option></select></label>
+      <div class="form-row">
+        <label class="field field--grow"><span class="field__label">开始时间</span><input name="start_time" type="time" required value="08:00"></label>
+        <label class="field field--grow"><span class="field__label">结束时间</span><input name="end_time" type="time" required value="09:40"></label>
+      </div>
+      <p class="field__hint">请按应用时区填写时间。跨天课程请拆成两个时段。</p>
+      <button class="button" type="submit">添加时段</button>
+    </form>
+  </section>
+</div>
+<section class="panel" aria-labelledby="week-heading">
+  <h2 id="week-heading">本周课程安排</h2>
+  <div id="schedule-list" aria-live="polite"><p class="empty-state">正在加载课表…</p></div>
+</section>
+{% endblock %}
