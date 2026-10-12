@@ -3,7 +3,7 @@
 {% block scripts %}<script src="{{ url_for('static', filename='auth.js') }}" defer></script>{% endblock %}
 {% block content %}
 <header class="page-heading"><div><h1 id="auth-heading">登录笔记课间</h1><p>课程、笔记、待办和复习记录，保存在你自己的账号中。</p></div></header>
-<div class="grid-two">
+<div class="grid-two auth-layout">
   <section class="panel" aria-labelledby="auth-form-heading">
     <h2 id="auth-form-heading">欢迎回来</h2>
     <form class="stack" id="auth-form" data-next="{{ next_path }}" data-registration-enabled="{{ 'true' if registration_enabled else 'false' }}">

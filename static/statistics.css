@@ -1,7 +1,7 @@
 .learning-heatmap {
   display: grid;
-  grid-template-columns: repeat(14, minmax(0, 1fr));
-  gap: var(--space-1);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: .3125rem;
   padding: var(--space-0);
   margin: var(--space-4) var(--space-0);
   list-style: none;
@@ -15,12 +15,15 @@
   display: grid;
   place-items: center;
   padding: var(--space-0);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-rule);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-alt);
-  color: var(--color-text);
+  background: var(--color-surface-sunken);
+  color: var(--color-muted);
   font-size: var(--font-xs);
+  font-variant-numeric: tabular-nums;
+  transition: transform .12s var(--ease);
 }
+.learning-heatmap__day:hover { transform: scale(1.06); }
 .learning-heatmap__day::before, .heatmap-legend__swatch::before {
   content: '';
   position: absolute;
@@ -29,17 +32,21 @@
   background: var(--color-primary);
   opacity: 0;
 }
-.learning-heatmap__day--1::before { opacity: .18; }
-.learning-heatmap__day--2::before { opacity: .38; }
+.learning-heatmap__day--1::before { opacity: .2; }
+.learning-heatmap__day--2::before { opacity: .45; }
 .learning-heatmap__day--3::before { opacity: 1; }
-.learning-heatmap__day--3 { color: var(--color-primary-contrast); }
+.learning-heatmap__day--1, .learning-heatmap__day--2 { color: var(--color-text); }
+.learning-heatmap__day--3 { color: var(--color-primary-contrast); font-weight: 600; }
 .learning-heatmap__count { position: relative; z-index: 1; }
-.learning-heatmap__day[aria-pressed="true"] { outline: var(--border-width) solid var(--color-text); outline-offset: var(--space-1); }
-.heatmap-detail { min-height: var(--space-7); margin: var(--space-4) var(--space-0); font-size: var(--font-sm); }
-.heatmap-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); font-size: var(--font-sm); color: var(--color-muted); }
-.heatmap-legend__item { display: inline-flex; align-items: center; gap: var(--space-1); }
-.heatmap-legend__swatch { position: relative; display: inline-block; width: var(--space-4); height: var(--space-4); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-alt); }
-.statistics-value { font-size: var(--font-xl); }
-.course-statistics__name { font-size: var(--font-lg); }
-.course-statistics { min-width: 0; overflow-wrap: anywhere; }
-@media (max-width: 700px) { .learning-heatmap { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+.learning-heatmap__day[aria-pressed="true"] { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.heatmap-detail { min-height: var(--space-7); margin: var(--space-4) var(--space-0); padding: var(--space-3) var(--space-4); font-size: var(--font-sm); background: var(--color-surface-sunken); border-radius: var(--radius-sm); }
+.heatmap-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); font-size: var(--font-xs); color: var(--color-muted); }
+.heatmap-legend__item { display: inline-flex; align-items: center; gap: var(--space-2); }
+.heatmap-legend__swatch { position: relative; display: inline-block; width: .875rem; height: .875rem; border: var(--border-width) solid var(--color-rule); border-radius: .25rem; background: var(--color-surface-sunken); }
+.statistics-value { font-family: var(--font-display); font-size: 2rem; font-weight: 600; line-height: 1.25; margin-bottom: var(--space-2); font-variant-numeric: tabular-nums; }
+.course-statistics__name { font-size: var(--font-md); font-weight: 600; margin-bottom: var(--space-2); }
+.course-statistics { min-width: 0; overflow-wrap: anywhere; margin-bottom: var(--space-0); }
+.course-statistics p { font-size: var(--font-sm); color: var(--color-muted); margin-bottom: var(--space-1); }
+#course-statistics { margin-top: var(--space-3); }
+#course-statistics > .empty-state, #course-statistics > .error-message { grid-column: 1 / -1; }
+@media (min-width: 640px) { .learning-heatmap { grid-template-columns: repeat(14, minmax(0, 1fr)); } }

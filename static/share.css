@@ -1,7 +1,13 @@
-.share-panel { margin-top: var(--space-5); }
-.share-preview { max-height: var(--share-preview-height); max-width: 100%; overflow: auto; border: var(--border-width) solid var(--color-border); border-radius: var(--radius-sm); }
-.share-preview--capture { max-height: none; overflow: visible; }
-.share-paper { width: var(--share-width); padding: var(--share-padding); background: var(--color-surface); color: var(--color-text); font-size: var(--share-body-size); overflow-wrap: anywhere; }
+.share-panel { margin-top: var(--space-4); }
+.share-panel .form-row { margin-top: var(--space-2); }
+#share-status { font-size: var(--font-sm); margin-top: var(--space-2); }
+.share-preview { max-height: var(--share-preview-height); max-width: 100%; overflow: auto; padding: var(--space-4); background: var(--color-surface-sunken); border: var(--border-width) solid var(--color-rule); border-radius: var(--radius-md); }
+.share-preview--capture { max-height: none; overflow: visible; padding: 0; border: 0; background: none; }
+.share-paper { width: var(--share-width); padding: var(--share-padding); background: var(--color-surface); color: var(--color-text); font-size: var(--share-body-size); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; letter-spacing: normal; overflow-wrap: anywhere; margin: 0 auto;
+  --font-reading: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-display: Georgia, "Songti SC", "Noto Serif SC", "Microsoft YaHei", serif;
+  --reading-line-height: 1.85;
+}
 .share-paper--paper {
   --color-surface: var(--share-paper-bg);
   --color-text: var(--share-paper-text);
@@ -24,7 +30,7 @@
 }
 .share-paper__header { border-bottom: var(--border-width) solid var(--color-border); padding-bottom: var(--space-5); margin-bottom: var(--space-5); }
 .share-paper__brand, .share-paper__course { font-size: var(--font-sm); color: var(--color-muted); }
-.share-paper__title { font-size: var(--share-title-size); margin-bottom: var(--space-3); line-height: 1.35; }
+.share-paper__title { font-family: Georgia, "Songti SC", "Noto Serif SC", "Microsoft YaHei", serif; font-size: var(--share-title-size); margin-bottom: var(--space-3); line-height: 1.35; }
 .share-paper__course { margin-bottom: var(--space-0); }
 .share-paper__body { line-height: 1.85; }
 .share-paper__body pre { white-space: pre-wrap; overflow-wrap: anywhere; }

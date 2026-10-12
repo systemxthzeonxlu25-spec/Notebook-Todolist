@@ -1,8 +1,21 @@
-.course-exam-help { margin-top: var(--space-4); margin-bottom: var(--space-0); }
-.course-exam-form { margin-top: var(--space-3); }
+.course-exam-help { margin-top: var(--space-4); margin-bottom: var(--space-2); }
+.course-exam-form { margin-top: var(--space-3); padding: var(--space-3); background: var(--color-surface-sunken); border-radius: var(--radius-sm); }
+.course-exam-form .field__label { font-size: var(--font-xs); }
 .course-exam-status { flex-basis: 100%; margin: var(--space-0); }
-.exam-countdown__days { font-size: var(--font-xl); color: var(--color-primary); margin-bottom: var(--space-2); }
-.exam-countdown__date { font-size: var(--font-sm); color: var(--color-muted); }
-.exam-countdown__course { margin-bottom: var(--space-2); }
-.exam-countdown__card { padding: var(--space-4); border-radius: var(--radius-sm); border: var(--border-width) solid var(--color-border); background: var(--color-surface-alt); }
-.exam-countdown__card--today { border-color: var(--color-primary); }
+.course-exam-status:empty { display: none; }
+#course-list .list-item__row > strong { font-size: var(--font-md); font-weight: 600; }
+.exam-countdown__card { display: flex; flex-direction: column; align-items: flex-start; padding: var(--space-4) 1.125rem; border-radius: var(--radius-md); border: var(--border-width) solid var(--color-rule); background: var(--color-surface-sunken); }
+.exam-countdown__card--today { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary-soft) 55%, var(--color-surface)); }
+.exam-countdown__course { margin-bottom: var(--space-1); font-size: var(--font-md); font-weight: 600; }
+.exam-countdown__days { font-family: var(--font-display); font-size: 1.75rem; font-weight: 600; line-height: 1.2; color: var(--color-primary); margin-bottom: var(--space-1); }
+.exam-countdown__date { font-size: var(--font-xs); color: var(--color-muted); margin-bottom: var(--space-3); }
+.exam-countdown__card a { margin-top: auto; font-size: var(--font-sm); }
+.exam-countdown .field__hint { margin-bottom: var(--space-4); }
+.schedule-day + .schedule-day { margin-top: var(--space-4); }
+.schedule-day__title { font-size: var(--font-xs); font-weight: 600; letter-spacing: .08em; color: var(--color-muted); margin: var(--space-0) var(--space-0) var(--space-1); padding-bottom: var(--space-2); border-bottom: var(--border-width) solid var(--color-border); }
+.schedule-day .list-item__content strong { font-weight: 600; }
+.schedule-day .list-item__meta { font-variant-numeric: tabular-nums; }
+@media (min-width: 900px) {
+  #schedule-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--space-4) var(--space-5); }
+  .schedule-day + .schedule-day { margin-top: var(--space-0); }
+}
