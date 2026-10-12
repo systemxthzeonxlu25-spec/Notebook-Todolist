@@ -150,6 +150,17 @@ def _owner(owner_id):
     return _text(owner_id, "用户标识", max_length=128)
 
 
+def positive_id(value, *, allow_string=False):
+    """Validate IDs before binding them to SQLite's signed 64-bit INTEGER."""
+    if allow_string and isinstance(value, str):
+        if not value.isascii() or not value.isdecimal() or len(value) > 19:
+            raise ValueError("记录编号必须是有效的正整数")
+        value = int(value)
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 2**63 - 1:
+        raise ValueError("记录编号必须是有效的正整数")
+    return value
+
+
 def _boolean(value):
     if isinstance(value, bool):
         return int(value)
@@ -206,6 +217,7 @@ def init_db(db_path):
 
 
 def _get(conn, table, owner_id, item_id):
+    item_id = positive_id(item_id)
     row = conn.execute(f"SELECT * FROM {table} WHERE owner_id=? AND id=?", (_owner(owner_id), item_id)).fetchone()
     if row is None:
         return None
@@ -241,6 +253,7 @@ def _update(conn, table, owner_id, item_id, fields):
 
 
 def _delete(db_path, table, owner_id, item_id):
+    item_id = positive_id(item_id)
     with _connection(db_path) as conn:
         return conn.execute(f"DELETE FROM {table} WHERE owner_id=? AND id=?", (_owner(owner_id), item_id)).rowcount > 0
 
@@ -316,7 +329,7 @@ def list_notes(db_path, owner_id, query="", course_id=None, unclassified=False):
         clauses.append("n.course_id IS NULL")
     elif course_id is not None:
         clauses.append("n.course_id=?")
-        params.append(course_id)
+        params.append(positive_id(course_id))
     with _connection(db_path) as conn:
         return [dict(row) for row in conn.execute("SELECT n.*,c.name AS course_name FROM notes n LEFT JOIN courses c ON c.id=n.course_id AND c.owner_id=n.owner_id WHERE " + " AND ".join(clauses) + " ORDER BY n.updated_at DESC,n.id DESC", params)]
 
@@ -625,6 +638,7 @@ def clear_login_attempts(db_path, ip_key, identity_key):
 
 
 def list_attachments(db_path, owner_id, note_id):
+    note_id = positive_id(note_id)
     with _connection(db_path) as conn:
         return [dict(row) for row in conn.execute(
             "SELECT a.* FROM attachments a JOIN notes n ON n.id=a.note_id AND n.owner_id=a.owner_id WHERE a.owner_id=? AND a.note_id=? ORDER BY a.id",

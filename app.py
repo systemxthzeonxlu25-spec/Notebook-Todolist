@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from flask import Flask, g, jsonify, render_template, request, session, send_from_directory
 from werkzeug.exceptions import HTTPException
+from werkzeug.routing import BaseConverter, ValidationError
 from proxy import LoopbackProxyFix
 
 import db
@@ -20,8 +21,20 @@ ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
 
+class PositiveSQLiteIDConverter(BaseConverter):
+    """Reject invalid route IDs before Python or SQLite integer conversion."""
+    regex = r"[0-9]+"
+
+    def to_python(self, value):
+        try:
+            return db.positive_id(value, allow_string=True)
+        except ValueError:
+            raise ValidationError from None
+
+
 def create_app(test_config=None):
     app = Flask(__name__)
+    app.url_map.converters["int"] = PositiveSQLiteIDConverter
     production = os.getenv("APP_ENV") == "production"
     secret = os.getenv("SECRET_KEY")
     app.config.update(
@@ -77,12 +90,7 @@ def create_app(test_config=None):
     def course_value(value):
         if value in (None, ""):
             return None
-        if isinstance(value, bool):
-            raise ValueError("课程格式不正确")
-        try:
-            course_id = int(value)
-        except (TypeError, ValueError):
-            raise ValueError("课程格式不正确") from None
+        course_id = db.positive_id(value, allow_string=True)
         if not db.get_course(*database(), course_id):
             raise ValueError("课程不存在")
         return course_id
@@ -100,7 +108,9 @@ def create_app(test_config=None):
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             supplied = request.headers.get("X-CSRF-Token", "")
             expected = session.get("csrf_token", "")
-            if not expected or not secrets.compare_digest(supplied, expected):
+            if (not isinstance(expected, str) or not expected or not expected.isascii()
+                    or not supplied.isascii() or len(supplied) != len(expected)
+                    or not secrets.compare_digest(supplied, expected)):
                 return jsonify(error="页面安全凭证已失效，请刷新后重试"), 403
 
     @app.context_processor
