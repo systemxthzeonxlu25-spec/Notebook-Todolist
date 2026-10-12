@@ -30,7 +30,13 @@
     try { response = await fetch(path, { ...options, body, headers, credentials: 'same-origin' }); }
     catch (_) { throw new Error('网络连接失败，请检查网络后重试。'); }
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `请求失败（${response.status}），请稍后重试。`);
+    if (!response.ok) {
+      const expired = response.status === 401 && !path.startsWith('/api/auth/');
+      if (expired) document.dispatchEvent(new CustomEvent('session:expired'));
+      const error = new Error(expired ? '登录状态已失效，请保留本地草稿并前往登录。' : (payload.error || `请求失败（${response.status}），请稍后重试。`));
+      error.status = response.status;
+      throw error;
+    }
     return payload.data;
   }
   function renderMarkdown(content, target) {

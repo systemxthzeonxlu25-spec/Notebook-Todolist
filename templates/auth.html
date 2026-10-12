@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}登录{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='auth.js') }}" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading"><div><h1 id="auth-heading">登录笔记课间</h1><p>课程、笔记、待办和复习记录，保存在你自己的账号中。</p></div></header>
+<div class="grid-two">
+  <section class="panel" aria-labelledby="auth-form-heading">
+    <h2 id="auth-form-heading">欢迎回来</h2>
+    <form class="stack" id="auth-form" data-next="{{ next_path }}" data-registration-enabled="{{ 'true' if registration_enabled else 'false' }}">
+      <label class="field"><span class="field__label">用户名</span><input id="auth-username" name="username" autocomplete="username" minlength="3" maxlength="32" required aria-describedby="auth-username-hint"><span class="field__hint" id="auth-username-hint">3–32 个中文、字母、数字或 _ . - 字符。</span></label>
+      <label class="field"><span class="field__label">密码</span><input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required aria-describedby="auth-password-hint"><span class="field__hint" id="auth-password-hint">密码长度为 8–128 个字符。</span></label>
+      <label class="field" id="auth-confirm-field" hidden><span class="field__label">再次输入密码</span><input id="auth-confirm-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" disabled></label>
+      <p class="error-message" id="auth-error" role="alert" hidden></p>
+      <button class="button" id="auth-submit" type="submit">登录</button>
+      {% if registration_enabled %}<button class="button button--quiet" id="auth-switch" type="button">还没有账号？注册</button>{% else %}<p class="field__hint">本站暂未开放注册，请联系站点管理员获取账号。</p>{% endif %}
+    </form>
+  </section>
+  <aside class="panel" aria-labelledby="auth-about-heading">
+    <h2 id="auth-about-heading">从课堂记录到下一次复习</h2>
+    <p>笔记、待办、复习卡是同一份内容的不同视图。</p>
+    <ul><li>Markdown 记录课堂内容。</li><li>勾选语法生成待办，重点标记生成复习卡。</li><li>今日页集中查看到期任务与复习安排。</li></ul>
+    <p class="muted">草稿保留在当前浏览器；保存笔记后，才能在其他设备登录查看。</p>
+  </aside>
+</div>
+{% endblock %}

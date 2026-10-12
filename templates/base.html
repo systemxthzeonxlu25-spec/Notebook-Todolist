@@ -15,10 +15,11 @@
   <script src="{{ url_for('static', filename='vendor/marked.js') }}" defer></script>
   <script src="{{ url_for('static', filename='vendor/purify.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='auth-session.js') }}" defer></script>
   <script src="{{ url_for('static', filename='pwa.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </head>
-<body>
+<body data-user-id="{{ current_user.id if current_user else '' }}">
   <a class="skip-link" href="#main-content">跳到主要内容</a>
   <header class="site-header">
     <div class="site-header__inner">
@@ -30,10 +31,16 @@
         <a href="/schedule" {% if request.path == '/schedule' %}aria-current="page"{% endif %}>课表</a>
         {% block extra_navigation %}{% endblock %}
       </nav>
+      <div class="action-row site-account">
+        {% if current_user %}<span class="site-account__username">{{ current_user.username }}</span><button class="button button--quiet button--small" id="session-logout" type="button">退出登录</button>{% else %}<a class="button button--quiet button--small" href="/auth" {% if request.path == '/auth' %}aria-current="page"{% endif %}>登录</a>{% endif %}
+      </div>
       <button class="button button--quiet" id="theme-toggle" type="button" aria-label="切换深色模式" aria-pressed="false">深色模式</button>
     </div>
   </header>
-  <main class="page" id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
+  <main class="page" id="main-content" tabindex="-1">
+    <section class="panel" id="session-expired" role="alert" hidden><h2>请重新登录</h2><p>登录状态已失效。请确认本地草稿已保存，再前往登录；重新登录后可恢复草稿。</p><a class="button button--secondary" id="session-login-link" href="/auth">前往登录</a></section>
+    {% block content %}{% endblock %}
+  </main>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <footer class="site-footer">笔记、待办、复习卡，是同一份内容的不同视图。</footer>
 </body>
