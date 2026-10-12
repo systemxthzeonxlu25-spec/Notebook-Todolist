@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}一周课表{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='sprint.css') }}">{% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='schedule.js') }}" defer></script>{% endblock %}
 {% block content %}
 <header class="page-heading">
@@ -12,6 +13,7 @@
       <label class="field field--grow"><span class="field__label">课程名称</span><input name="name" required maxlength="100" placeholder="例如：高等数学"></label>
       <button class="button" type="submit">添加课程</button>
     </form>
+    <p class="field__hint course-exam-help">考试日期按 {{ app_timezone }} 当天 00:00 截止。设置未来考试后，会压缩复习间隔，为每张卡安排考前至少两轮复习机会，请按时完成。今天及过去的考试不再压缩；清除日期不会推迟已经安排的卡片。</p>
     <ul class="item-list" id="course-list" aria-live="polite"></ul>
   </section>
   <section class="panel" aria-labelledby="schedule-form-heading">
@@ -32,4 +34,12 @@
   <h2 id="week-heading">本周课程安排</h2>
   <div id="schedule-list" aria-live="polite"><p class="empty-state">正在加载课表…</p></div>
 </section>
+<template id="course-exam-template">
+  <form class="course-exam-form form-row">
+    <label class="field field--grow"><span class="field__label">考试日期</span><input class="course-exam-date" name="exam_date" type="date"></label>
+    <button class="button button--secondary button--small course-exam-save" type="submit">保存日期</button>
+    <button class="button button--quiet button--small course-exam-clear" type="button">清除</button>
+    <p class="field__hint course-exam-status" role="status"></p>
+  </form>
+</template>
 {% endblock %}

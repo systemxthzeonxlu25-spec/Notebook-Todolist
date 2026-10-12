@@ -1,12 +1,17 @@
 {% extends 'base.html' %}
 {% block title %}今日{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='sprint.css') }}">{% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='today.js') }}" defer></script>{% endblock %}
 {% block content %}
 <header class="page-heading">
   <div><h1>今天，学一点</h1><p id="today-date">正在加载今天的安排…</p></div>
   <a class="button" href="/notes/new">新建笔记</a>
 </header>
-<section id="today-exams" aria-label="考试倒计时" hidden></section>
+<section class="panel exam-countdown" id="today-exams" aria-labelledby="exam-countdown-heading" hidden>
+  <div class="panel__heading"><h2 id="exam-countdown-heading">考试倒计时</h2><a href="/schedule">管理考试日期</a></div>
+  <p class="field__hint">按 {{ app_timezone }} 的考试日 00:00 截止。未来考试会自动压缩复习间隔，安排考前至少两轮机会，请按时复习；今天及过去的考试不再压缩。</p>
+  <div class="grid-two" id="today-exam-list"></div>
+</section>
 <div class="grid-two">
   <section class="panel" aria-labelledby="todos-heading">
     <div class="panel__heading"><h2 id="todos-heading">到期待办</h2><span class="badge" id="todos-count">0 项</span></div>
@@ -16,7 +21,7 @@
   </section>
   <section class="panel" aria-labelledby="cards-heading">
     <div class="panel__heading"><h2 id="cards-heading">今日复习</h2><span class="badge" id="cards-count">0 张</span></div>
-    <p class="muted">先尝试回忆，再翻看答案。按 1 / 3 / 7 / 15 天安排复习。</p>
+    <p class="muted">先尝试回忆，再翻看答案。通常按 1 / 3 / 7 / 15 天复习，考试冲刺时自动缩短间隔。</p>
     <div id="today-cards" aria-live="polite"><p class="empty-state">正在加载复习卡…</p></div>
   </section>
 </div>

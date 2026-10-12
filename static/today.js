@@ -6,6 +6,24 @@
   const allToggle = document.getElementById('todos-show-all');
   let today = null;
   let todoSerial = 0;
+  function renderExams(exams) {
+    const section = document.getElementById('today-exams');
+    const list = document.getElementById('today-exam-list');
+    list.replaceChildren();
+    section.hidden = !exams.length;
+    for (const exam of exams) {
+      const card = element('article', 'exam-countdown__card');
+      card.classList.toggle('exam-countdown__card--today', exam.days_left === 0);
+      const days = exam.days_left > 0 ? `还有 ${exam.days_left} 天` : (exam.days_left === 0 ? '今天考试' : `考试日期已过 ${Math.abs(exam.days_left)} 天`);
+      card.append(element('h3', 'exam-countdown__course', exam.course_name));
+      card.append(element('p', 'exam-countdown__days', days));
+      card.append(element('p', 'exam-countdown__date', `考试日期：${exam.exam_date}`));
+      const notes = element('a', '', '复习这门课的笔记');
+      notes.href = `/notes?course_id=${encodeURIComponent(exam.course_id)}`;
+      card.append(notes);
+      list.append(card);
+    }
+  }
   function sourceLink(noteId) {
     const link = element('a', '', '查看来源笔记');
     link.href = `/notes/${noteId}`;
@@ -127,6 +145,7 @@
       document.getElementById('today-date').textContent = `${today.date} · ${today.tz || '应用时间'} · 从一件小事开始。`;
       renderTodos(today.todos);
       renderCards(today.cards);
+      renderExams(today.exams || []);
       document.dispatchEvent(new CustomEvent('today:ready', { detail: today }));
     } catch (error) {
       document.getElementById('today-date').textContent = '暂时无法加载今天的安排';

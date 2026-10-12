@@ -1,0 +1,8 @@
+.course-exam-help { margin-top: var(--space-4); margin-bottom: var(--space-0); }
+.course-exam-form { margin-top: var(--space-3); }
+.course-exam-status { flex-basis: 100%; margin: var(--space-0); }
+.exam-countdown__days { font-size: var(--font-xl); color: var(--color-primary); margin-bottom: var(--space-2); }
+.exam-countdown__date { font-size: var(--font-sm); color: var(--color-muted); }
+.exam-countdown__course { margin-bottom: var(--space-2); }
+.exam-countdown__card { padding: var(--space-4); border-radius: var(--radius-sm); border: var(--border-width) solid var(--color-border); background: var(--color-surface-alt); }
+.exam-countdown__card--today { border-color: var(--color-primary); }

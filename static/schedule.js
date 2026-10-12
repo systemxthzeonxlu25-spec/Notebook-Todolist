@@ -7,14 +7,42 @@
   const courseSelect = document.getElementById('schedule-course');
   const scheduleList = document.getElementById('schedule-list');
   function courseName(id) { return courses.find(course => Number(course.id) === Number(id))?.name || '未命名课程'; }
+  function examForm(course) {
+    const form = document.getElementById('course-exam-template').content.firstElementChild.cloneNode(true);
+    form.setAttribute('aria-label', `${course.name}的考试日期`);
+    const input = form.querySelector('.course-exam-date');
+    const save = form.querySelector('.course-exam-save');
+    const clear = form.querySelector('.course-exam-clear');
+    const status = form.querySelector('.course-exam-status');
+    input.value = course.exam_date || '';
+    clear.disabled = !course.exam_date;
+    async function update(date) {
+      input.disabled = true;
+      save.disabled = true;
+      clear.disabled = true;
+      status.textContent = '正在更新考试日期…';
+      try {
+        await api(`/api/courses/${course.id}`, { method: 'PATCH', body: { exam_date: date || null } });
+        course.exam_date = date || null;
+        input.value = date || '';
+        status.textContent = date ? '考试日期已保存，复习安排已更新。' : '已清除考试日期，已有卡片的到期时间保留。';
+        notify(date ? '考试日期已保存' : '考试日期已清除');
+      } catch (error) { status.textContent = error.message; notify(error.message, true); }
+      finally { input.disabled = false; save.disabled = false; clear.disabled = !course.exam_date; }
+    }
+    form.addEventListener('submit', event => { event.preventDefault(); if (!save.disabled) update(input.value); });
+    clear.addEventListener('click', () => update(null));
+    return form;
+  }
   async function loadCourses() {
     courses = await api('/api/courses');
     courseList.replaceChildren();
     courseSelect.replaceChildren(new Option(courses.length ? '选择课程' : '请先添加课程', ''));
     for (const course of courses) {
       courseSelect.add(new Option(course.name, course.id));
-      const item = element('li', 'list-item list-item__row');
-      item.append(element('span', 'list-item__content', course.name));
+      const item = element('li', 'list-item');
+      const heading = element('div', 'list-item__row');
+      heading.append(element('strong', 'list-item__content', course.name));
       const actions = element('div', 'action-row');
       const rename = element('button', 'button button--quiet button--small', '重命名');
       rename.type = 'button';
@@ -32,7 +60,8 @@
         catch (error) { notify(error.message, true); }
       });
       actions.append(rename, remove);
-      item.append(actions);
+      heading.append(actions);
+      item.append(heading, examForm(course));
       courseList.append(item);
     }
     if (!courses.length) courseList.append(element('li', 'empty-state', '还没有课程，添加第一门吧。'));
