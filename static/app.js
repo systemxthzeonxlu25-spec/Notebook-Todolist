@@ -96,13 +96,20 @@
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   }
   const themeButton = document.getElementById('theme-toggle');
-  let theme = storage.get('notebook-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  // theme-init.js applies the saved style and color mode before first paint; this only drives the header toggle.
+  const appearance = window.Appearance;
+  let theme = appearance ? appearance.theme() : (storage.get('notebook-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
   function applyTheme() {
     document.documentElement.dataset.theme = theme;
     themeButton.textContent = theme === 'dark' ? '浅色模式' : '深色模式';
     themeButton.setAttribute('aria-pressed', String(theme === 'dark'));
   }
   applyTheme();
-  themeButton.addEventListener('click', () => { theme = theme === 'dark' ? 'light' : 'dark'; storage.set('notebook-theme', theme); applyTheme(); });
+  document.addEventListener('appearance:change', event => { theme = event.detail.theme; applyTheme(); });
+  themeButton.addEventListener('click', () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    if (appearance) { appearance.setMode(next); return; }
+    theme = next; storage.set('notebook-theme', theme); applyTheme();
+  });
   window.App = { api, notify, renderMarkdown, element, formatDate, localDateTime, storage };
 })();

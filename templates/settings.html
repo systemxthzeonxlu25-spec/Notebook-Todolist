@@ -1,11 +1,36 @@
 {% extends 'base.html' %}
-{% block title %}AI 设置{% endblock %}
+{% block title %}设置{% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='ai-settings.js') }}" defer></script>
 <script src="{{ url_for('static', filename='settings.js') }}" defer></script>
+<script src="{{ url_for('static', filename='appearance.js') }}" defer></script>
 {% endblock %}
 {% block content %}
-<header class="page-heading"><div><h1>AI 设置</h1><p>连接你自己的 OpenAI 兼容服务，为笔记添加整理、任务识别、出题与照片识别。</p></div></header>
+<header class="page-heading"><div><h1>设置</h1><p>调整界面外观，连接你自己的 AI 服务。</p></div></header>
+<section class="panel" id="appearance" aria-labelledby="appearance-heading">
+  <h2 id="appearance-heading">外观</h2>
+  <form id="appearance-form">
+    <fieldset class="choice-group">
+      <legend class="field__label">界面风格</legend>
+      <div class="style-options">
+        <label class="style-option"><input type="radio" name="ui_style" value="claude"><span class="style-option__preview style-option__preview--claude" aria-hidden="true"><span></span><span></span><span></span></span><span class="style-option__name">纸张</span><span class="style-option__desc">安静克制的排版，暖色纸张与衬线标题</span></label>
+        <label class="style-option"><input type="radio" name="ui_style" value="m3"><span class="style-option__preview style-option__preview--m3" aria-hidden="true"><span></span><span></span><span></span></span><span class="style-option__name">Material 3 Expressive</span><span class="style-option__desc">色调层次、大圆角与弹性动效</span></label>
+        <label class="style-option"><input type="radio" name="ui_style" value="hig"><span class="style-option__preview style-option__preview--hig" aria-hidden="true"><span></span><span></span><span></span></span><span class="style-option__name">Human Interface</span><span class="style-option__desc">分组列表、系统色与半透明材质</span></label>
+      </div>
+    </fieldset>
+    <fieldset class="choice-group">
+      <legend class="field__label">颜色模式</legend>
+      <div class="segmented">
+        <label><input type="radio" name="color_mode" value="light"><span>浅色</span></label>
+        <label><input type="radio" name="color_mode" value="dark"><span>深色</span></label>
+        <label><input type="radio" name="color_mode" value="system"><span>跟随系统</span></label>
+      </div>
+    </fieldset>
+  </form>
+  <p class="field__hint">外观只保存在当前浏览器，立即生效。顶部的月亮 / 太阳按钮可随时切换深浅色。</p>
+</section>
+<h2 class="section-title" id="ai">AI 设置</h2>
+<p class="section-intro">连接你自己的 OpenAI 兼容服务，为笔记添加整理、任务识别、出题与照片识别。</p>
 <div class="grid-two">
   <section class="panel" aria-labelledby="ai-settings-heading">
     <h2 id="ai-settings-heading">连接设置</h2>

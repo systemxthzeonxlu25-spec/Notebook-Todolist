@@ -1,6 +1,6 @@
 'use strict';
-const CACHE = 'notebook-shell-v1';
-const SHELL = ['/offline', '/static/tokens.css', '/static/app.css', '/static/app.js', '/static/pwa.js', '/static/icon.svg', '/static/vendor/marked.js', '/static/vendor/purify.min.js'];
+const CACHE = 'notebook-shell-v2';
+const SHELL = ['/offline', '/static/tokens.css', '/static/app.css', '/static/theme-init.js', '/static/app.js', '/static/pwa.js', '/static/icon.svg', '/static/vendor/marked.js', '/static/vendor/purify.min.js'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
