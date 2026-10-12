@@ -1,0 +1,32 @@
+<section class="panel vision-panel" id="vision-panel" aria-labelledby="vision-heading">
+  <h2 id="vision-heading">拍板书识别</h2>
+  <p class="field__hint">选择板书照片，识别为 Markdown 笔记与作业待办。公式支持 LaTeX。请核对识别内容后再使用；照片将发送到你配置的 AI 服务。</p>
+  <p class="field__hint" id="vision-settings-hint">尚未配置 AI，请先<a href="/settings">前往设置</a>。照片识别需要支持图片输入的模型。</p>
+  <div class="form-row">
+    <label class="field field--grow"><span class="field__label">拍摄或选择照片（JPEG、PNG、WebP，最大 12 MiB）</span><input id="vision-file" type="file" accept="image/jpeg,image/png,image/webp" capture="environment"></label>
+    <button class="button" id="vision-recognize" type="button" disabled>识别照片</button>
+  </div>
+  <p class="muted" id="vision-status" role="status" aria-live="polite">图片会压缩到长边最多 2000 像素后识别，保存附件时保留原图。</p>
+  <img class="vision-image" id="vision-image" alt="待识别的板书照片" hidden>
+  <section class="vision-result" id="vision-result" aria-labelledby="vision-result-heading" hidden>
+    <h3 id="vision-result-heading">识别结果</h3>
+    <div class="vision-result__preview markdown-body" id="vision-result-preview"></div>
+    <div class="action-row">
+      <button class="button" id="vision-append" type="button">确认并追加到笔记</button>
+      <button class="button button--secondary" id="vision-replace" type="button">确认并替换正文</button>
+      <button class="button button--quiet" id="vision-discard" type="button">丢弃结果</button>
+    </div>
+    <p class="field__hint">确认后请保存笔记，原图会随之上传。刷新前尚未上传的照片不会保留在本地草稿中。</p>
+  </section>
+  <section class="vision-pending" id="vision-pending" aria-labelledby="vision-pending-heading" hidden>
+    <h3 id="vision-pending-heading">待保存的原图</h3>
+    <ul class="item-list" id="vision-pending-list"></ul>
+    <button class="button button--secondary" id="vision-upload" type="button">保存笔记并上传原图</button>
+    <p class="field__hint">上传失败时可在本页重试，请勿刷新或关闭页面。</p>
+  </section>
+</section>
+<section class="panel attachment-panel" id="attachment-panel" aria-labelledby="attachment-heading">
+  <div class="panel__heading"><h2 id="attachment-heading">笔记附件</h2><button class="button button--quiet button--small" id="attachment-reload" type="button">刷新附件</button></div>
+  <p class="muted" id="attachment-status" role="status">保存笔记后，板书原图会显示在这里。</p>
+  <div class="attachment-list" id="attachment-list"></div>
+</section>

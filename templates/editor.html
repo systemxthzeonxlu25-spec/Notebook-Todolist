@@ -1,11 +1,18 @@
 {% extends 'base.html' %}
 {% block title %}编辑笔记{% endblock %}
-{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='share.css') }}">{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='share.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='ai.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vision.css') }}">
+{% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='editor.js') }}" defer></script>
 <script src="{{ url_for('static', filename='drafts.js') }}" defer></script>
 <script src="{{ url_for('static', filename='vendor/html2canvas.min.js') }}" defer></script>
 <script src="{{ url_for('static', filename='share.js') }}" defer></script>
+<script src="{{ url_for('static', filename='ai-settings.js') }}" defer></script>
+<script src="{{ url_for('static', filename='ai.js') }}" defer></script>
+<script src="{{ url_for('static', filename='vision.js') }}" defer></script>
 {% endblock %}
 {% block content %}
 <header class="page-heading">
@@ -36,6 +43,8 @@
   <p class="field__hint" id="draft-status" role="status">编辑内容会自动暂存于当前浏览器。</p>
 </form>
 <div id="editor-extensions">
+  {% include '_ai.html' %}
+  {% include '_vision.html' %}
   <section class="panel share-panel" id="share-panel" aria-labelledby="share-heading" hidden>
     <div class="panel__heading"><h2 id="share-heading">把笔记分享成长图</h2><button class="button button--quiet button--small" id="share-close" type="button">收起</button></div>
     <div class="form-row">
