@@ -12,6 +12,7 @@ import hashlib
 from pathlib import Path
 import re
 import sqlite3
+import uuid
 
 
 SCHEMA = """
@@ -79,6 +80,23 @@ CREATE INDEX IF NOT EXISTS idx_notes_owner ON notes(owner_id, course_id, updated
 CREATE INDEX IF NOT EXISTS idx_todos_owner_due ON todos(owner_id, due_at);
 CREATE INDEX IF NOT EXISTS idx_cards_owner_due ON cards(owner_id, due_at);
 CREATE INDEX IF NOT EXISTS idx_review_logs_owner ON review_logs(owner_id, reviewed_at);
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL,
+    username_key TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS auth_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT NOT NULL CHECK(action IN ('login','register')),
+    ip_key TEXT NOT NULL,
+    identity_key TEXT NOT NULL,
+    attempted_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_auth_attempts_scope
+    ON auth_attempts(action, ip_key, identity_key, attempted_at);
+CREATE INDEX IF NOT EXISTS idx_auth_attempts_date ON auth_attempts(attempted_at);
 """
 
 
@@ -473,3 +491,81 @@ def sync_note_items(db_path, owner_id, note_id, todos, cards):
             return None
         _sync_note_items(conn, owner_id, note, todos, cards)
         return note
+
+
+# Authentication records are deliberately separate from content ownership.
+# Existing local data is never claimed by registering or signing in.
+def create_user(db_path, username, username_key, password_hash):
+    """Create a user, returning safe account fields; duplicate names return None."""
+    username = _text(username, "用户名", max_length=32)
+    username_key = _text(username_key, "用户名标识", max_length=128)
+    password_hash = _text(password_hash, "密码哈希", max_length=1000)
+    user_id, created_at = str(uuid.uuid4()), _now()
+    with _connection(db_path) as conn:
+        try:
+            conn.execute(
+                "INSERT INTO users (id,username,username_key,password_hash,created_at) VALUES (?,?,?,?,?)",
+                (user_id, username, username_key, password_hash, created_at),
+            )
+        except sqlite3.IntegrityError:
+            return None
+    return {"id": user_id, "username": username, "created_at": created_at}
+
+
+def get_user(db_path, user_id):
+    """Return safe fields only; never place password hashes in sessions or JSON."""
+    with _connection(db_path) as conn:
+        row = conn.execute("SELECT id,username,created_at FROM users WHERE id=?", (user_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+
+def get_auth_user(db_path, username_key):
+    """Private authentication lookup. Callers must not serialize this result."""
+    with _connection(db_path) as conn:
+        row = conn.execute("SELECT * FROM users WHERE username_key=?", (username_key,)).fetchone()
+        return dict(row) if row is not None else None
+
+
+def reserve_auth_attempt(db_path, action, ip_key, identity_key, *, attempted_at=None,
+                         pair_limit=5, ip_limit=30, window_seconds=900):
+    """Atomically reserve an attempt, bounding failures and concurrent hashing.
+
+    Failed login attempts remain. Successful logins release their pair's attempts
+    with clear_login_attempts. Registration attempts remain regardless of result.
+    Keys are one-way hashes, never passwords, API keys, or raw request bodies.
+    """
+    if action not in ("login", "register"):
+        raise ValueError("认证操作无效")
+    for limit in (pair_limit, ip_limit, window_seconds):
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+            raise ValueError("认证限速配置无效")
+    now = datetime.fromisoformat(_timestamp(attempted_at, nullable=False))
+    cutoff = _timestamp(now - timedelta(seconds=window_seconds), nullable=False)
+    retention = _timestamp(now - timedelta(seconds=max(window_seconds, 86400)), nullable=False)
+    with _connection(db_path) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("DELETE FROM auth_attempts WHERE attempted_at<=?", (retention,))
+        rows = list(conn.execute(
+            "SELECT id,identity_key,attempted_at FROM auth_attempts WHERE action=? AND ip_key=? AND attempted_at>? ORDER BY attempted_at,id",
+            (action, ip_key, cutoff),
+        ))
+        pair = [row for row in rows if row["identity_key"] == identity_key]
+        blocking = []
+        if len(pair) >= pair_limit:
+            blocking.append(pair[-pair_limit])
+        if len(rows) >= ip_limit:
+            blocking.append(rows[-ip_limit])
+        if blocking:
+            expires = max(datetime.fromisoformat(row["attempted_at"]) + timedelta(seconds=window_seconds) for row in blocking)
+            retry_after = max(1, int((expires - now).total_seconds()) + 1)
+            return {"id": None, "retry_after": retry_after}
+        cursor = conn.execute(
+            "INSERT INTO auth_attempts(action,ip_key,identity_key,attempted_at) VALUES (?,?,?,?)",
+            (action, ip_key, identity_key, _timestamp(now, nullable=False)),
+        )
+        return {"id": cursor.lastrowid, "retry_after": 0}
+
+
+def clear_login_attempts(db_path, ip_key, identity_key):
+    with _connection(db_path) as conn:
+        conn.execute("DELETE FROM auth_attempts WHERE action='login' AND ip_key=? AND identity_key=?", (ip_key, identity_key))

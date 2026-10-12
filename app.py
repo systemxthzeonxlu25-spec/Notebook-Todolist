@@ -10,6 +10,7 @@ from flask import Flask, g, jsonify, render_template, request, session, send_fro
 from werkzeug.exceptions import HTTPException
 
 import db
+import auth
 from domain import current_course, extract_items, parse_due, utc_iso
 
 ROOT = Path(__file__).resolve().parent
@@ -32,12 +33,14 @@ def create_app(test_config=None):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true",
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+        TEMPLATES_AUTO_RELOAD=not production,
     )
     if test_config:
         app.config.update(test_config)
     Path(app.config["DATABASE_PATH"]).parent.mkdir(parents=True, exist_ok=True)
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
     db.init_db(app.config["DATABASE_PATH"])
+    auth.init_app(app)
 
     def now():
         provider = app.config.get("NOW_PROVIDER")
@@ -81,7 +84,9 @@ def create_app(test_config=None):
 
     @app.before_request
     def prepare_request():
-        g.owner_id = "local"
+        result = auth.authenticate_request()
+        if result is not None:
+            return result
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             supplied = request.headers.get("X-CSRF-Token", "")
             expected = session.get("csrf_token", "")
@@ -90,7 +95,8 @@ def create_app(test_config=None):
 
     @app.context_processor
     def template_context():
-        return {"csrf_token": csrf_token(), "app_timezone": app.config["TZ"]}
+        return {"csrf_token": csrf_token(), "app_timezone": app.config["TZ"],
+                "current_user": auth.public_user(g.user)}
 
     @app.after_request
     def security_headers(response):
@@ -103,6 +109,8 @@ def create_app(test_config=None):
             "font-src 'self' https://cdn.jsdelivr.net; connect-src 'self'; "
             "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")
         if request.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+        elif response.mimetype == "text/html" and request.path != "/offline":
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -121,7 +129,9 @@ def create_app(test_config=None):
 
     @app.get("/api/session")
     def session_info():
-        return data({"csrf_token": csrf_token(), "timezone": app.config["TZ"]})
+        return data({"csrf_token": csrf_token(), "timezone": app.config["TZ"],
+                     "user": auth.public_user(g.user),
+                     "registration_enabled": app.config["REGISTER_ENABLED"]})
 
     @app.get("/")
     def index():
