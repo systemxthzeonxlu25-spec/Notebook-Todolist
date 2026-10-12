@@ -1,0 +1,14 @@
+{
+  "id": "/",
+  "name": "笔记课间 · 学生笔记",
+  "short_name": "笔记课间",
+  "lang": "zh-CN",
+  "description": "笔记、待办、复习卡是同一份内容的不同视图",
+  "start_url": "/quick",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#f5f7fb",
+  "theme_color": "#2459c2",
+  "icons": [{"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+}
