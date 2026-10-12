@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from flask import Flask, g, jsonify, render_template, request, session, send_from_directory
 from werkzeug.exceptions import HTTPException
+from proxy import LoopbackProxyFix
 
 import db
 import auth
@@ -23,22 +24,27 @@ def create_app(test_config=None):
     app = Flask(__name__)
     production = os.getenv("APP_ENV") == "production"
     secret = os.getenv("SECRET_KEY")
-    if production and not secret and not test_config:
-        raise RuntimeError("生产环境必须通过环境变量设置 SECRET_KEY")
     app.config.update(
-        SECRET_KEY=secret or secrets.token_hex(32),
+        SECRET_KEY=secret or (None if production else secrets.token_hex(32)),
         DATABASE_PATH=str(ROOT / os.getenv("DATABASE_PATH", "instance/notebook.sqlite3")),
         UPLOAD_FOLDER=str(ROOT / os.getenv("UPLOAD_FOLDER", "instance/uploads")),
         TZ=os.getenv("TZ", "Asia/Shanghai"),
         MAX_CONTENT_LENGTH=int(os.getenv("MAX_CONTENT_LENGTH", "16777216")),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true",
+        SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "true" if production else "false").lower() == "true",
+        TRUST_PROXY=os.getenv("TRUST_PROXY", "false").lower() == "true",
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         TEMPLATES_AUTO_RELOAD=not production,
     )
     if test_config:
         app.config.update(test_config)
+    if production and not app.config.get("TESTING"):
+        configured_secret = app.config.get("SECRET_KEY")
+        if not isinstance(configured_secret, str) or len(configured_secret) < 32:
+            raise RuntimeError("生产环境必须通过环境变量设置至少 32 个字符的随机 SECRET_KEY")
+    if app.config["TRUST_PROXY"]:
+        app.wsgi_app = LoopbackProxyFix(app.wsgi_app)
     Path(app.config["DATABASE_PATH"]).parent.mkdir(parents=True, exist_ok=True)
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
     db.init_db(app.config["DATABASE_PATH"])
