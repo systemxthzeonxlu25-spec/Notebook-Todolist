@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily Notebook Todolist SQLite backup
+
+[Timer]
+# 使用服务器本地时区，避免修改整台 VPS 的时区。
+OnCalendar=*-*-* 03:20:00
+RandomizedDelaySec=15m
+Persistent=true
+Unit=notebook-backup.service
+
+[Install]
+WantedBy=timers.target
+

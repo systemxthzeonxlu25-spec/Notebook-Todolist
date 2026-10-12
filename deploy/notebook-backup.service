@@ -1,0 +1,36 @@
+[Unit]
+Description=Consistent daily SQLite backup for Notebook Todolist
+After=notebook-todolist.service
+
+[Service]
+Type=oneshot
+User=notebook
+Group=notebook
+EnvironmentFile=/etc/notebook-todolist.env
+Environment=BACKUP_DIR=/var/backups/notebook-todolist
+Environment=BACKUP_RETENTION_DAYS=14
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/notebook-todolist/.venv/bin/python /opt/notebook-todolist/deploy/backup_sqlite.py
+TimeoutStartSec=300
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+# mode=ro 仍可能需要创建 WAL/SHM 辅助文件，数据目录不能挂载为只读。
+ReadWritePaths=/var/lib/notebook-todolist /var/backups/notebook-todolist
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=true
+Nice=15
+CPUWeight=10
+CPUQuota=20%
+IOWeight=10
+MemoryMax=64M
+OOMScoreAdjust=500
+TasksMax=4
+
