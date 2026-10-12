@@ -11,7 +11,9 @@ from werkzeug.exceptions import HTTPException
 
 import db
 import auth
-from domain import current_course, extract_items, parse_due, utc_iso
+import uploads
+import ai
+from domain import current_course, extract_items, next_lesson, parse_due, utc_iso
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -41,6 +43,8 @@ def create_app(test_config=None):
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
     db.init_db(app.config["DATABASE_PATH"])
     auth.init_app(app)
+    uploads.init_app(app)
+    ai.init_app(app)
 
     def now():
         provider = app.config.get("NOW_PROVIDER")
@@ -105,7 +109,7 @@ def create_app(test_config=None):
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
-            "style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob:; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
             "font-src 'self' https://cdn.jsdelivr.net; connect-src 'self'; "
             "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")
         if request.path.startswith("/api/"):
@@ -173,6 +177,10 @@ def create_app(test_config=None):
     @app.get("/schedule")
     def schedule_page():
         return render_template("schedule.html")
+
+    @app.get("/settings")
+    def settings_page():
+        return render_template("settings.html")
 
     @app.route("/api/courses", methods=["GET", "POST"])
     def courses():
@@ -260,11 +268,39 @@ def create_app(test_config=None):
     def note(note_id):
         if request.method == "PUT":
             return save_note(note_id)
-        result = db.delete_note(*database(), note_id) if request.method == "DELETE" else db.get_note(*database(), note_id)
+        if request.method == "DELETE":
+            attachments = db.list_attachments(*database(), note_id)
+            result = db.delete_note(*database(), note_id)
+            if result:
+                uploads.clean_files(app, attachments)
+        else:
+            result = db.get_note(*database(), note_id)
         return data(result) if result else (jsonify(error="笔记不存在"), 404)
 
-    @app.get("/api/todos")
+    def manual_context(body):
+        note_id = body.get("note_id")
+        if note_id is not None:
+            if isinstance(note_id, bool) or not isinstance(note_id, int):
+                raise ValueError("笔记格式不正确")
+            note = db.get_note(*database(), note_id)
+            if not note:
+                raise ValueError("笔记不存在")
+        else:
+            note = None
+        course_id = course_value(body.get("course_id", note["course_id"] if note else None))
+        items = body.get("items")
+        if not isinstance(items, list) or not 1 <= len(items) <= 100 or not all(isinstance(item, dict) for item in items):
+            raise ValueError("请提交 1 到 100 条确认后的内容")
+        return note_id, course_id, items
+
+    @app.route("/api/todos", methods=["GET", "POST"])
     def todos():
+        if request.method == "POST":
+            note_id, course_id, items = manual_context(payload())
+            default_due = next_lesson(db.list_schedule(*database()), course_id, now())
+            parsed = [{"title": text_field(item, "title", limit=5000),
+                       "due_at": parse_due(item.get("due_at"), ZoneInfo(app.config["TZ"])) or default_due} for item in items]
+            return data(db.create_manual_todos(*database(), parsed, note_id=note_id, course_id=course_id), 201)
         return data(db.list_todos(*database()))
 
     @app.patch("/api/todos/<int:todo_id>")
@@ -279,8 +315,13 @@ def create_app(test_config=None):
         result = db.update_todo(*database(), todo_id, **changes)
         return data(result) if result else (jsonify(error="待办不存在"), 404)
 
-    @app.get("/api/cards")
+    @app.route("/api/cards", methods=["GET", "POST"])
     def cards():
+        if request.method == "POST":
+            note_id, course_id, items = manual_context(payload())
+            parsed = [{"front": text_field(item, "front", limit=20000),
+                       "back": text_field(item, "back", limit=20000), "due_at": utc_iso(now())} for item in items]
+            return data(db.create_manual_cards(*database(), parsed, note_id=note_id, course_id=course_id), 201)
         return data(db.list_cards(*database()))
 
     @app.post("/api/cards/<int:card_id>/review")

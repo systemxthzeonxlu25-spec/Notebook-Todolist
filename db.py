@@ -97,6 +97,17 @@ CREATE TABLE IF NOT EXISTS auth_attempts (
 CREATE INDEX IF NOT EXISTS idx_auth_attempts_scope
     ON auth_attempts(action, ip_key, identity_key, attempted_at);
 CREATE INDEX IF NOT EXISTS idx_auth_attempts_date ON auth_attempts(attempted_at);
+CREATE TABLE IF NOT EXISTS attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id TEXT NOT NULL,
+    note_id INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    stored_name TEXT NOT NULL UNIQUE,
+    original_name TEXT NOT NULL,
+    media_type TEXT NOT NULL,
+    size INTEGER NOT NULL CHECK(size > 0),
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_attachments_note ON attachments(owner_id, note_id);
 """
 
 
@@ -569,3 +580,91 @@ def reserve_auth_attempt(db_path, action, ip_key, identity_key, *, attempted_at=
 def clear_login_attempts(db_path, ip_key, identity_key):
     with _connection(db_path) as conn:
         conn.execute("DELETE FROM auth_attempts WHERE action='login' AND ip_key=? AND identity_key=?", (ip_key, identity_key))
+
+
+def list_attachments(db_path, owner_id, note_id):
+    with _connection(db_path) as conn:
+        return [dict(row) for row in conn.execute(
+            "SELECT a.* FROM attachments a JOIN notes n ON n.id=a.note_id AND n.owner_id=a.owner_id WHERE a.owner_id=? AND a.note_id=? ORDER BY a.id",
+            (_owner(owner_id), note_id),
+        )]
+
+
+def get_attachment(db_path, owner_id, attachment_id):
+    with _connection(db_path) as conn:
+        return _get(conn, "attachments", owner_id, attachment_id)
+
+
+def _attachment_name(value):
+    if not isinstance(value, str) or "/" in value or "\\" in value or len(value) > 80:
+        raise ValueError("附件存储名称无效")
+    stem, dot, extension = value.rpartition(".")
+    if not dot or extension not in {"jpg", "jpeg", "png", "webp"}:
+        raise ValueError("附件存储名称无效")
+    try:
+        parsed = uuid.UUID(stem)
+    except (ValueError, AttributeError) as exc:
+        raise ValueError("附件存储名称必须使用 UUID") from exc
+    if stem not in (parsed.hex, str(parsed)):
+        raise ValueError("附件存储名称必须使用 UUID")
+    return value
+
+
+def create_attachment(db_path, owner_id, note_id, stored_name, original_name, media_type, size):
+    stored_name = _attachment_name(stored_name)
+    original_name = _text(original_name, "附件原始名称", max_length=255)
+    if "\0" in original_name:
+        raise ValueError("附件原始名称无效")
+    if media_type not in {"image/jpeg", "image/png", "image/webp"}:
+        raise ValueError("附件必须是 JPEG、PNG 或 WEBP 图片")
+    if isinstance(size, bool) or not isinstance(size, int) or not 0 < size <= 12 * 1024 * 1024:
+        raise ValueError("图片大小必须介于 1 字节和 12 MiB 之间")
+    if note_id is None:
+        raise ValueError("附件必须关联笔记")
+    with _connection(db_path) as conn:
+        _require_reference(conn, "notes", owner_id, note_id)
+        return _insert(conn, "attachments", dict(
+            owner_id=_owner(owner_id), note_id=note_id, stored_name=stored_name,
+            original_name=original_name, media_type=media_type, size=size, created_at=_now(),
+        ))
+
+
+def delete_attachment(db_path, owner_id, attachment_id):
+    return _delete(db_path, "attachments", owner_id, attachment_id)
+
+
+def _manual_items(items):
+    if not isinstance(items, list) or len(items) > 100 or any(not isinstance(item, dict) for item in items):
+        raise ValueError("确认内容必须是最多 100 项的列表")
+    return items
+
+
+def create_manual_todos(db_path, owner_id, items, note_id=None, course_id=None):
+    """Persist a confirmed set atomically; extraction never removes these items."""
+    items = _manual_items(items)
+    with _connection(db_path) as conn:
+        course_id = _validate_links(conn, owner_id, note_id, course_id)
+        result = []
+        for item in items:
+            result.append(_insert(conn, "todos", dict(
+                owner_id=_owner(owner_id), note_id=note_id, course_id=course_id,
+                source_key=None, title=_text(item.get("title"), "待办内容", max_length=5000),
+                due_at=_timestamp(item.get("due_at")), completed=0, created_at=_now(),
+            )))
+        return result
+
+
+def create_manual_cards(db_path, owner_id, items, note_id=None, course_id=None):
+    """Persist confirmed AI questions without allowing client-supplied source IDs."""
+    items = _manual_items(items)
+    with _connection(db_path) as conn:
+        course_id = _validate_links(conn, owner_id, note_id, course_id)
+        result = []
+        for item in items:
+            result.append(_insert(conn, "cards", dict(
+                owner_id=_owner(owner_id), note_id=note_id, course_id=course_id,
+                source_key=None, front=_text(item.get("front"), "卡片问题", max_length=20000),
+                back=_text(item.get("back"), "卡片答案", max_length=20000),
+                kind="qa", due_at=_timestamp(item.get("due_at"), nullable=False), step=0, created_at=_now(),
+            )))
+        return result
