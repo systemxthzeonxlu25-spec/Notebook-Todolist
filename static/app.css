@@ -14,7 +14,7 @@ h3 { font-size: var(--font-lg); }
 .site-header { background: var(--color-surface); border-bottom: var(--border-width) solid var(--color-border); }
 .site-header__inner { max-width: var(--page-width); margin: auto; padding: var(--space-4) var(--space-5); display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; }
 .site-brand { font-size: var(--font-lg); font-weight: 750; color: var(--color-text); text-decoration: none; }
-.site-nav { display: flex; gap: var(--space-4); flex: 1; }
+.site-nav { display: flex; flex-wrap: wrap; gap: var(--space-4); flex: 1; }
 .site-nav a { color: var(--color-muted); text-decoration: none; padding: var(--space-1) var(--space-0); }
 .site-nav a[aria-current="page"] { color: var(--color-primary); border-bottom: .15rem solid var(--color-primary); font-weight: 700; }
 .page { max-width: var(--page-width); margin: auto; padding: var(--space-6) var(--space-5); min-height: 75vh; }

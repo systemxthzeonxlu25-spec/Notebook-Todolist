@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}学习面板{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='statistics.css') }}">{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='statistics.js') }}" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading"><div><h1>学习面板</h1><p>记录每一次回顾，让进步可以看见。</p></div><button class="button button--secondary" id="statistics-reload" type="button">刷新统计</button></header>
+<p class="muted" id="statistics-status" role="status" aria-live="polite">正在加载学习记录…</p>
+<section class="panel" aria-labelledby="activity-heading">
+  <h2 id="activity-heading">最近 84 天学习热力图</h2>
+  <p class="muted" id="statistics-timezone">正在读取统计时区…</p>
+  <p class="muted" id="heatmap-description">创建一篇笔记、回答一张复习卡、首次完成一个待办各记 1 次；反复勾选同一任务不重复计数。</p>
+  <ul id="learning-heatmap" class="learning-heatmap" aria-describedby="heatmap-description" aria-label="每日学习活动"></ul>
+  <p class="heatmap-detail" id="heatmap-detail" role="status" aria-live="polite">聚焦、悬停或点击日期方格，查看当天学习次数。</p>
+  <div class="heatmap-legend" aria-label="颜色由浅到深表示学习次数增加">
+    <span class="heatmap-legend__item"><span class="heatmap-legend__swatch learning-heatmap__day--0" aria-hidden="true"></span>0 次</span>
+    <span class="heatmap-legend__item"><span class="heatmap-legend__swatch learning-heatmap__day--1" aria-hidden="true"></span>1 次</span>
+    <span class="heatmap-legend__item"><span class="heatmap-legend__swatch learning-heatmap__day--2" aria-hidden="true"></span>2–3 次</span>
+    <span class="heatmap-legend__item"><span class="heatmap-legend__swatch learning-heatmap__day--3" aria-hidden="true"></span>4 次及以上</span>
+  </div>
+  <p class="field__hint">日期从左到右、从上到下排列；颜色由浅到深表示次数增加。旧版待办无完成日期时不会补记。</p>
+</section>
+<section class="panel" aria-labelledby="completion-heading">
+  <h2 id="completion-heading">待办完成率</h2>
+  <p id="todo-rate" class="statistics-value">正在加载…</p>
+  <p class="muted">统计当前保留的待办，已删除的待办不计入分母。</p>
+</section>
+<section class="panel" aria-labelledby="courses-statistics-heading">
+  <h2 id="courses-statistics-heading">按课程查看</h2>
+  <p class="muted">复习正确率 =「记住了」次数 ÷ 回答总次数；没有记录时显示「暂无」。</p>
+  <div id="course-statistics" class="grid-two"><p class="empty-state">正在加载…</p></div>
+</section>
+{% endblock %}

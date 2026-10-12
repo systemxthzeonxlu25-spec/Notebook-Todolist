@@ -32,6 +32,7 @@
         <a href="/notes" {% if request.path.startswith('/notes') %}aria-current="page"{% endif %}>笔记</a>
         <a href="/quick" {% if request.path == '/quick' %}aria-current="page"{% endif %}>随手记</a>
         <a href="/schedule" {% if request.path == '/schedule' %}aria-current="page"{% endif %}>课表</a>
+        {% if current_user %}<a href="/statistics" {% if request.path == '/statistics' %}aria-current="page"{% endif %}>统计</a>{% endif %}
         {% if current_user %}<a href="/settings" {% if request.path == '/settings' %}aria-current="page"{% endif %}>设置</a>{% endif %}
         {% block extra_navigation %}{% endblock %}
       </nav>

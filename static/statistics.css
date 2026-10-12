@@ -1,0 +1,45 @@
+.learning-heatmap {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: var(--space-1);
+  padding: var(--space-0);
+  margin: var(--space-4) var(--space-0);
+  list-style: none;
+}
+.learning-heatmap__item { min-width: 0; }
+.learning-heatmap__day {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: var(--space-6);
+  display: grid;
+  place-items: center;
+  padding: var(--space-0);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: var(--font-xs);
+}
+.learning-heatmap__day::before, .heatmap-legend__swatch::before {
+  content: '';
+  position: absolute;
+  inset: var(--space-0);
+  border-radius: inherit;
+  background: var(--color-primary);
+  opacity: 0;
+}
+.learning-heatmap__day--1::before { opacity: .18; }
+.learning-heatmap__day--2::before { opacity: .38; }
+.learning-heatmap__day--3::before { opacity: 1; }
+.learning-heatmap__day--3 { color: var(--color-primary-contrast); }
+.learning-heatmap__count { position: relative; z-index: 1; }
+.learning-heatmap__day[aria-pressed="true"] { outline: var(--border-width) solid var(--color-text); outline-offset: var(--space-1); }
+.heatmap-detail { min-height: var(--space-7); margin: var(--space-4) var(--space-0); font-size: var(--font-sm); }
+.heatmap-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); font-size: var(--font-sm); color: var(--color-muted); }
+.heatmap-legend__item { display: inline-flex; align-items: center; gap: var(--space-1); }
+.heatmap-legend__swatch { position: relative; display: inline-block; width: var(--space-4); height: var(--space-4); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-alt); }
+.statistics-value { font-size: var(--font-xl); }
+.course-statistics__name { font-size: var(--font-lg); }
+.course-statistics { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .learning-heatmap { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
