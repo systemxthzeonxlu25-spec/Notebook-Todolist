@@ -1,0 +1,20 @@
+# 独立候选配置：确认不存在既有 Caddy 服务且 80/443 空闲后方可启用。
+# 把下面两个占位符改成自己的邮箱和已指向 VPS 的域名。
+{
+	admin off
+	email YOUR_EMAIL@example.com
+}
+
+notes.example.com {
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	reverse_proxy 127.0.0.1:18765 {
+		transport http {
+			dial_timeout 3s
+			response_header_timeout 120s
+		}
+	}
+}

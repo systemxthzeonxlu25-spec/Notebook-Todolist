@@ -1,0 +1,49 @@
+[Unit]
+Description=Dedicated Caddy HTTPS proxy for Notebook Todolist
+Wants=network-online.target
+After=network-online.target notebook-todolist.service
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=notify
+User=notebook-caddy
+Group=notebook-caddy
+Environment=XDG_DATA_HOME=/var/lib/notebook-caddy
+Environment=XDG_CONFIG_HOME=/var/lib/notebook-caddy
+Environment=GOMAXPROCS=1
+Environment=GOMEMLIMIT=80MiB
+ExecStart=/usr/local/bin/notebook-caddy run --config /etc/notebook-caddy/Caddyfile --adapter caddyfile
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+StateDirectory=notebook-caddy
+StateDirectoryMode=0700
+UMask=0077
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/notebook-caddy
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+Nice=10
+CPUWeight=20
+CPUQuota=30%
+IOWeight=20
+MemoryHigh=96M
+MemoryMax=128M
+OOMScoreAdjust=500
+TasksMax=64
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
+
