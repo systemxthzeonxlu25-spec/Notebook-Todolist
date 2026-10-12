@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="theme-color" content="#2563eb">
+  <title>{% block title %}学生笔记{% endblock %} · 笔记课间</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  {% block head %}{% endblock %}
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js" defer></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="/">笔记课间</a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="/" {% if request.path == '/' %}aria-current="page"{% endif %}>今日</a>
+        <a href="/notes" {% if request.path.startswith('/notes') %}aria-current="page"{% endif %}>笔记</a>
+        <a href="/schedule" {% if request.path == '/schedule' %}aria-current="page"{% endif %}>课表</a>
+        {% block extra_navigation %}{% endblock %}
+      </nav>
+      <button class="button button--quiet" id="theme-toggle" type="button" aria-label="切换深色模式" aria-pressed="false">深色模式</button>
+    </div>
+  </header>
+  <main class="page" id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <footer class="site-footer">笔记、待办、复习卡，是同一份内容的不同视图。</footer>
+</body>
+</html>
