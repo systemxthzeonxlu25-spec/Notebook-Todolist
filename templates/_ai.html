@@ -1,0 +1,47 @@
+<section class="panel ai-panel" id="ai-tools" aria-labelledby="ai-heading">
+  <div class="panel__heading"><h2 id="ai-heading">AI 学习助手</h2><a href="/settings">AI 设置</a></div>
+  <p class="field__hint" id="ai-config-hint">尚未配置 AI，请前往设置填写并保存 API Key。</p>
+  <p class="field__hint">点击后会将所选正文或任务描述发送给你配置的服务商。生成结果经你确认后才会写入。</p>
+  <div class="action-row">
+    <button class="button button--secondary" id="ai-organize" type="button" disabled>一键整理笔记</button>
+    <button class="button button--secondary" id="ai-generate-cards" type="button" disabled>根据笔记出题</button>
+  </div>
+  <p id="ai-main-status" class="muted" role="status"></p>
+  <section class="ai-result" id="ai-organize-result" aria-labelledby="ai-organize-heading" hidden>
+    <h3 id="ai-organize-heading">整理结果预览</h3>
+    <div class="ai-result__preview markdown-body" id="ai-organize-preview"></div>
+    <p class="field__hint">选择应用方式后，结果会进入编辑器。检查并点击「保存笔记」才会更新服务器。</p>
+    <div class="action-row"><button class="button" id="ai-organize-replace" type="button">替换编辑器内容</button><button class="button button--secondary" id="ai-organize-append" type="button">保留原文，追加整理版</button><button class="button button--quiet" id="ai-organize-dismiss" type="button">放弃结果</button></div>
+  </section>
+  <section class="ai-task-input" aria-labelledby="ai-task-heading">
+    <h3 id="ai-task-heading">识别自然语言任务</h3>
+    <form id="ai-task-form" class="stack">
+      <label class="field"><span class="field__label">任务描述</span><textarea id="ai-task-text" rows="3" maxlength="20000" placeholder="例如：下周三前交报告，周五晚上复习第三章" required></textarea></label>
+      <div class="action-row"><button class="button button--secondary" id="ai-extract-tasks" type="submit" disabled>识别任务和截止时间</button><button class="button button--quiet" id="ai-task-from-note" type="button">填入当前笔记正文</button></div>
+    </form>
+    <p class="muted" id="ai-task-status" role="status"></p>
+  </section>
+  <section class="ai-result" id="ai-task-result" aria-labelledby="ai-task-result-heading" hidden>
+    <h3 id="ai-task-result-heading">确认待办</h3>
+    <p class="field__hint">核对任务和截止时间，取消勾选可排除不需要的任务。时间按当前设备时区显示；留空使用课程默认截止时间。新笔记会先保存，再关联待办。</p>
+    <form id="ai-task-confirm" class="stack"><div id="ai-task-items" class="stack"></div><div class="action-row"><button class="button" id="ai-task-add" type="submit">确认添加所选待办</button><button class="button button--quiet" id="ai-task-dismiss" type="button">放弃结果</button></div></form>
+  </section>
+  <section class="ai-result" id="ai-card-result" aria-labelledby="ai-card-result-heading" hidden>
+    <h3 id="ai-card-result-heading">确认复习题</h3>
+    <p class="field__hint">检查并修改问题与答案，取消勾选可排除不需要的题目。新笔记会先保存，再关联复习卡。</p>
+    <form id="ai-card-confirm" class="stack"><div id="ai-card-items" class="stack"></div><div class="action-row"><button class="button" id="ai-card-add" type="submit">确认加入复习卡</button><button class="button button--quiet" id="ai-card-dismiss" type="button">放弃结果</button></div></form>
+    <p class="muted" id="ai-card-status" role="status"></p>
+  </section>
+</section>
+<template id="ai-task-item-template">
+  <article class="ai-result-item">
+    <label class="todo-item__check"><input class="ai-item-selected" type="checkbox" checked><span>加入待办</span></label>
+    <div class="form-row"><label class="field field--grow"><span class="field__label">任务内容</span><input class="ai-task-title" maxlength="500" required></label><label class="field"><span class="field__label">截止时间</span><input class="ai-task-due" type="datetime-local"></label></div>
+  </article>
+</template>
+<template id="ai-card-item-template">
+  <article class="ai-result-item">
+    <label class="todo-item__check"><input class="ai-item-selected" type="checkbox" checked><span>加入复习卡</span></label>
+    <div class="grid-two"><label class="field"><span class="field__label">问题</span><textarea class="ai-card-front" rows="3" maxlength="5000" required></textarea></label><label class="field"><span class="field__label">答案</span><textarea class="ai-card-back" rows="3" maxlength="5000" required></textarea></label></div>
+  </article>
+</template>
