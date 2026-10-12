@@ -20,19 +20,31 @@ def clock():
 
 @pytest.fixture
 def app(tmp_path, clock):
-    return create_app({
+    test_app = create_app({
         "TESTING": True,
         "SECRET_KEY": "only-for-tests-not-a-production-secret",
         "DATABASE_PATH": str(tmp_path / "notebook.sqlite3"),
         "UPLOAD_FOLDER": str(tmp_path / "uploads"),
         "TZ": "Asia/Shanghai",
         "NOW_PROVIDER": lambda: clock["now"],
+        "REGISTER_ENABLED": True,
     })
+    registered_client = test_app.test_client()
+    csrf = registered_client.get("/api/session").get_json()["data"]["csrf_token"]
+    response = registered_client.post(
+        "/api/auth/register",
+        json={"username": "core-user", "password": "core-tests-password"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert response.status_code == 201, response.get_json()
+    test_app.config["TEST_OWNER_ID"] = response.get_json()["data"]["user"]["id"]
+    test_app.extensions["registered_test_client"] = registered_client
+    return test_app
 
 
 @pytest.fixture
 def client(app):
-    return app.test_client()
+    return app.extensions["registered_test_client"]
 
 
 @pytest.fixture
@@ -155,16 +167,16 @@ def test_resaving_preserves_state_and_removal_only_deletes_extracted_items(api, 
     card = api("GET", "/api/cards")[0]
     reviewed = api("POST", f"/api/cards/{card['id']}/review", {"remembered": True})
     database = app.config["DATABASE_PATH"]
-    manual_todo = db.create_todo(database, "local", "手工待办", note_id=note["id"])
-    manual_card = db.create_card(database, "local", "手工问题", "手工答案", note_id=note["id"])
+    manual_todo = db.create_todo(database, app.config["TEST_OWNER_ID"], "手工待办", note_id=note["id"])
+    manual_card = db.create_card(database, app.config["TEST_OWNER_ID"], "手工问题", "手工答案", note_id=note["id"])
 
     api("PUT", f"/api/notes/{note['id']}", {"content": content + "\n补充说明"})
     saved = {item["id"]: item for item in api("GET", "/api/todos")}
     assert saved[todos[0]["id"]]["completed"] is True
     assert saved[todos[0]["id"]]["due_at"] == "2026-10-20T07:00:00+00:00"
     assert saved[todos[1]["id"]]["completed"] is False
-    assert db.get_card(database, "local", card["id"])["due_at"] == reviewed["due_at"]
-    assert db.get_card(database, "local", card["id"])["step"] == 1
+    assert db.get_card(database, app.config["TEST_OWNER_ID"], card["id"])["due_at"] == reviewed["due_at"]
+    assert db.get_card(database, app.config["TEST_OWNER_ID"], card["id"])["step"] == 1
 
     api("PUT", f"/api/notes/{note['id']}", {"content": "无派生内容"})
     assert [item["id"] for item in api("GET", "/api/todos")] == [manual_todo["id"]]
@@ -194,14 +206,14 @@ def test_review_intervals_and_forgetting_reset(api, clock):
 def test_today_uses_local_day_boundary_and_includes_overdue(api, app, clock):
     clock["now"] = datetime(2026, 10, 13, 0, 10, tzinfo=ZoneInfo("Asia/Shanghai"))
     database = app.config["DATABASE_PATH"]
-    today = db.create_todo(database, "local", "今天最后一秒", due_at="2026-10-13T23:59:59+08:00")
-    overdue = db.create_todo(database, "local", "逾期待办", due_at="2026-10-12T09:00:00+08:00")
-    db.create_todo(database, "local", "明天第一秒", due_at="2026-10-14T00:00:00+08:00")
-    db.create_todo(database, "local", "无截止日期")
-    done = db.create_todo(database, "local", "已完成", due_at="2026-10-13T12:00:00+08:00")
-    db.update_todo(database, "local", done["id"], completed=True)
-    card = db.create_card(database, "local", "今天卡片", "答案", due_at="2026-10-13T23:59:59+08:00")
-    db.create_card(database, "local", "明天卡片", "答案", due_at="2026-10-14T00:00:00+08:00")
+    today = db.create_todo(database, app.config["TEST_OWNER_ID"], "今天最后一秒", due_at="2026-10-13T23:59:59+08:00")
+    overdue = db.create_todo(database, app.config["TEST_OWNER_ID"], "逾期待办", due_at="2026-10-12T09:00:00+08:00")
+    db.create_todo(database, app.config["TEST_OWNER_ID"], "明天第一秒", due_at="2026-10-14T00:00:00+08:00")
+    db.create_todo(database, app.config["TEST_OWNER_ID"], "无截止日期")
+    done = db.create_todo(database, app.config["TEST_OWNER_ID"], "已完成", due_at="2026-10-13T12:00:00+08:00")
+    db.update_todo(database, app.config["TEST_OWNER_ID"], done["id"], completed=True)
+    card = db.create_card(database, app.config["TEST_OWNER_ID"], "今天卡片", "答案", due_at="2026-10-13T23:59:59+08:00")
+    db.create_card(database, app.config["TEST_OWNER_ID"], "明天卡片", "答案", due_at="2026-10-14T00:00:00+08:00")
     result = api("GET", "/api/today")
     assert result["date"] == "2026-10-13"
     assert {item["id"] for item in result["todos"]} == {today["id"], overdue["id"]}
@@ -224,7 +236,12 @@ def test_csrf_requires_session_bound_token_and_read_security_headers(app, client
     token = client.get("/api/session").get_json()["data"]["csrf_token"]
     assert client.post("/api/courses", json={"name": "恶意请求"}, headers={"X-CSRF-Token": "wrong"}).status_code == 403
     second_client = app.test_client()
-    second_client.get("/api/session")
+    second_csrf = second_client.get("/api/session").get_json()["data"]["csrf_token"]
+    registration = second_client.post(
+        "/api/auth/register", json={"username": "second-user", "password": "second-tests-password"},
+        headers={"X-CSRF-Token": second_csrf},
+    )
+    assert registration.status_code == 201
     assert second_client.post("/api/courses", json={"name": "跨会话请求"}, headers={"X-CSRF-Token": token}).status_code == 403
     api("POST", "/api/courses", {"name": "合法请求"}, 201)
     response = client.get("/api/courses")
@@ -264,10 +281,10 @@ def test_database_isolates_owners_and_rejects_cross_owner_links(app):
 def test_invalid_extraction_rolls_back_entire_note_transaction(app):
     database = app.config["DATABASE_PATH"]
     with pytest.raises(ValueError):
-        db.create_note(database, "local", "应回滚", "", todos=[{"title": "有效"}, {"title": None}])
-    assert db.list_notes(database, "local") == []
-    assert db.list_todos(database, "local") == []
-    note = db.create_note(database, "local", "原始标题", "原始内容")
+        db.create_note(database, app.config["TEST_OWNER_ID"], "应回滚", "", todos=[{"title": "有效"}, {"title": None}])
+    assert db.list_notes(database, app.config["TEST_OWNER_ID"]) == []
+    assert db.list_todos(database, app.config["TEST_OWNER_ID"]) == []
+    note = db.create_note(database, app.config["TEST_OWNER_ID"], "原始标题", "原始内容")
     with pytest.raises(ValueError):
-        db.update_note(database, "local", note["id"], title="无效修改", cards=[{"front": "缺少答案"}])
-    assert db.get_note(database, "local", note["id"])["title"] == "原始标题"
+        db.update_note(database, app.config["TEST_OWNER_ID"], note["id"], title="无效修改", cards=[{"front": "缺少答案"}])
+    assert db.get_note(database, app.config["TEST_OWNER_ID"], note["id"])["title"] == "原始标题"
