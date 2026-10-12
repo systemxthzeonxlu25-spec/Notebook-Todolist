@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}我的笔记{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='notes.js') }}" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading">
+  <div><h1>我的笔记</h1><p>课堂记录、任务与重点，都从一篇笔记开始。</p></div>
+  <a class="button" href="/notes/new">新建笔记</a>
+</header>
+<form class="panel form-row" id="notes-filter" role="search">
+  <label class="field field--grow"><span class="field__label">搜索笔记</span><input name="q" type="search" placeholder="搜索标题或正文" maxlength="200"></label>
+  <label class="field"><span class="field__label">课程分类</span><select name="course_id" id="notes-course"><option value="">所有笔记</option><option value="unclassified">未归类</option></select></label>
+  <button class="button button--secondary" type="submit">搜索</button>
+</form>
+<p id="notes-count" class="muted" role="status"></p>
+<section class="note-list" id="notes-list" aria-label="笔记列表" aria-live="polite"><p class="empty-state">正在加载笔记…</p></section>
+{% endblock %}

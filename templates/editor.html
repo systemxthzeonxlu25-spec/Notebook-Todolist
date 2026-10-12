@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}编辑笔记{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='editor.js') }}" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading">
+  <div><h1 id="editor-heading">新建笔记</h1><p id="editor-course-hint">新笔记按当前上课时间归类，也可以手动选择。</p></div>
+  <a class="button button--quiet" href="/notes">返回笔记</a>
+</header>
+<form id="note-form" class="stack">
+  <div class="form-row">
+    <label class="field field--grow"><span class="field__label">标题</span><input id="note-title" name="title" maxlength="200" placeholder="这节课讲了什么？" required></label>
+    <label class="field"><span class="field__label">课程</span><select id="note-course" name="course_id"><option value="">未归类</option></select></label>
+  </div>
+  <p class="field__hint">用 <code>- [ ] 任务内容</code> 生成待办，用 <code>==重点==</code> 生成挖空复习卡。保存后生效。</p>
+  <div class="editor-grid">
+    <label class="field"><span class="field__label">Markdown 正文</span><textarea class="editor-input" id="note-content" name="content" placeholder="# 课堂笔记&#10;&#10;今天学到：==需要记住的重点==&#10;&#10;- [ ] 完成本节课练习" spellcheck="false"></textarea></label>
+    <section class="field" aria-labelledby="preview-label"><h2 class="field__label" id="preview-label">阅读预览</h2><div class="editor-preview markdown-body" id="note-preview"></div></section>
+  </div>
+  <div class="action-row" id="editor-actions">
+    <button class="button" id="note-save" type="submit">保存笔记</button>
+    <button class="button button--danger" id="note-delete" type="button" hidden>删除笔记</button>
+    <span class="muted" id="note-save-status" role="status">尚未保存</span>
+  </div>
+</form>
+<div id="editor-extensions"></div>
+{% endblock %}
