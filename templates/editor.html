@@ -1,11 +1,19 @@
 {% extends 'base.html' %}
 {% block title %}编辑笔记{% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='editor.js') }}" defer></script>{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='editor.js') }}" defer></script>
+<script src="{{ url_for('static', filename='drafts.js') }}" defer></script>
+{% endblock %}
 {% block content %}
 <header class="page-heading">
   <div><h1 id="editor-heading">{% if quick %}随手记{% else %}新建笔记{% endif %}</h1><p id="editor-course-hint">{% if quick %}打开就能写，想法先记下来。课程和标题可以之后再补。{% else %}新笔记按当前上课时间归类，也可以手动选择。{% endif %}</p></div>
   <a class="button button--quiet" href="/notes">返回笔记</a>
 </header>
+<section class="panel" id="draft-recovery" aria-labelledby="draft-heading" hidden>
+  <h2 id="draft-heading">发现本地草稿</h2>
+  <p id="draft-recovery-message"></p>
+  <div class="action-row"><button class="button" id="draft-restore" type="button">恢复草稿</button><button class="button button--quiet" id="draft-discard" type="button">丢弃草稿，使用已保存内容</button></div>
+</section>
 <form id="note-form" class="stack" data-mode="{{ 'quick' if quick else 'note' }}">
   <div class="form-row">
     <label class="field field--grow"><span class="field__label">标题（可稍后补充）</span><input id="note-title" name="title" maxlength="200" placeholder="这节课讲了什么？"></label>
@@ -21,6 +29,7 @@
     <button class="button button--danger" id="note-delete" type="button" hidden>删除笔记</button>
     <span class="muted" id="note-save-status" role="status">尚未保存</span>
   </div>
+  <p class="field__hint" id="draft-status" role="status">编辑内容会自动暂存于当前浏览器。</p>
 </form>
 <div id="editor-extensions"></div>
 {% endblock %}
