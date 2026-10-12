@@ -1,0 +1,47 @@
+[Unit]
+Description=Notebook Todolist Flask application
+After=network.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=notebook
+Group=notebook
+WorkingDirectory=/opt/notebook-todolist
+EnvironmentFile=/etc/notebook-todolist.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/notebook-todolist/.venv/bin/gunicorn -c deploy/gunicorn.conf.py app:app
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=40
+KillSignal=SIGTERM
+StateDirectory=notebook-todolist
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/notebook-todolist
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+Nice=10
+CPUWeight=20
+CPUQuota=50%
+IOWeight=20
+MemoryHigh=192M
+MemoryMax=256M
+OOMScoreAdjust=500
+TasksMax=32
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
+
