@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
   <title>{% block title %}学生笔记{% endblock %} · 笔记课间</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
@@ -12,6 +14,7 @@
   <script src="{{ url_for('static', filename='vendor/marked.js') }}" defer></script>
   <script src="{{ url_for('static', filename='vendor/purify.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='pwa.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </head>
 <body>
@@ -22,6 +25,7 @@
       <nav class="site-nav" aria-label="主导航">
         <a href="/" {% if request.path == '/' %}aria-current="page"{% endif %}>今日</a>
         <a href="/notes" {% if request.path.startswith('/notes') %}aria-current="page"{% endif %}>笔记</a>
+        <a href="/quick" {% if request.path == '/quick' %}aria-current="page"{% endif %}>随手记</a>
         <a href="/schedule" {% if request.path == '/schedule' %}aria-current="page"{% endif %}>课表</a>
         {% block extra_navigation %}{% endblock %}
       </nav>

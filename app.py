@@ -6,7 +6,7 @@ import secrets
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from flask import Flask, g, jsonify, render_template, request, session
+from flask import Flask, g, jsonify, render_template, request, session, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 import db
@@ -134,6 +134,25 @@ def create_app(test_config=None):
     @app.get("/notes/new")
     def new_note_page():
         return render_template("editor.html", note_id=None)
+
+    @app.get("/quick")
+    def quick_note_page():
+        return render_template("editor.html", note_id=None, quick=True)
+
+    @app.get("/sw.js")
+    def service_worker():
+        response = send_from_directory(app.static_folder, "sw.js", max_age=0)
+        response.headers["Service-Worker-Allowed"] = "/"
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        return send_from_directory(app.static_folder, "manifest.webmanifest")
+
+    @app.get("/offline")
+    def offline():
+        return send_from_directory(app.static_folder, "offline.html")
 
     @app.get("/notes/<int:note_id>")
     def editor_page(note_id):

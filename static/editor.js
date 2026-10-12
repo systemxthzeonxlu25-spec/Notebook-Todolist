@@ -9,6 +9,7 @@
   const saveButton = document.getElementById('note-save');
   const deleteButton = document.getElementById('note-delete');
   const status = document.getElementById('note-save-status');
+  const quick = form.dataset.mode === 'quick';
   let noteId = location.pathname.match(/^\/notes\/(\d+)/)?.[1] || null;
   let dirty = false;
   let ready = false;
@@ -56,6 +57,7 @@
   });
   window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
   window.NoteEditor = {
+    get quick() { return quick; },
     get noteId() { return noteId; },
     get note() { return savedNote; },
     get ready() { return ready; },
@@ -70,8 +72,10 @@
   };
   async function initialize() {
     saveButton.disabled = true;
+    if (quick) content.focus();
+    if (noteId) { title.disabled = true; content.disabled = true; course.disabled = true; }
     try {
-      const [courses, initial] = await Promise.all([api('/api/courses'), api(noteId ? `/api/notes/${noteId}` : '/api/current-course')]);
+      const [courses, initial] = await Promise.all([api('/api/courses'), noteId ? api(`/api/notes/${noteId}`) : (quick ? Promise.resolve({ course_id: null }) : api('/api/current-course'))]);
       courses.forEach(item => course.add(new Option(item.name, item.id)));
       if (noteId) {
         savedNote = initial;
@@ -83,14 +87,18 @@
         document.getElementById('editor-course-hint').textContent = '保存后，笔记中的任务与重点会自动更新到待办和复习卡。';
         deleteButton.hidden = false;
       } else {
-        course.value = initial.course_id ?? '';
-        document.getElementById('editor-course-hint').textContent = initial.course_name ? `当前课程：${initial.course_name}，已为你自动选择。` : '现在没有课程，笔记将保存为未归类，也可以手动选择课程。';
+        if (!dirty) course.value = initial.course_id ?? '';
+        document.getElementById('editor-course-hint').textContent = quick ? '随手记默认保存为未归类，随时可以选择课程。' : (initial.course_name ? `当前课程：${initial.course_name}，已为你自动选择。` : '现在没有课程，笔记将保存为未归类，也可以手动选择课程。');
       }
       updatePreview();
       ready = true;
       saveButton.disabled = false;
       document.dispatchEvent(new CustomEvent('note:ready', { detail: { noteId, note: savedNote } }));
-    } catch (error) { status.textContent = '加载失败，请刷新后重试'; notify(error.message, true); }
+    } catch (error) {
+      status.textContent = '加载失败，可继续编辑本地草稿；恢复网络并刷新后再保存';
+      notify(error.message, true);
+      document.dispatchEvent(new CustomEvent('note:ready', { detail: { noteId, note: null, loadFailed: true } }));
+    } finally { title.disabled = false; content.disabled = false; course.disabled = false; }
   }
   initialize();
 })();
